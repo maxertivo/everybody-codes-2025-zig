@@ -250,6 +250,70 @@ pub fn day2() ![3][20]u8 {
     return [3][20]u8{buf1, buf2, buf3};
 }
 
+pub fn day3(a: Allocator) ![3]u32 {
+    var arena = std.heap.ArenaAllocator.init(a);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
+    const file: fs.File = try fs.cwd().openFile("src/inputs/day3.txt",.{},);
+    defer file.close();
+
+    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
+    const line1 = readLine(&reader.interface) orelse return error.invalid;
+
+    var set = std.AutoHashMap(u32, void).init(allocator);
+    var it = std.mem.tokenizeScalar(u8, line1, ',');
+    while(it.next()) |next| {
+        const num = try std.fmt.parseInt(u32, next, 10);
+        try set.put(num, void{});
+    }
+
+    var part1: u32 = 0;
+    var iter = set.keyIterator();
+    while(iter.next()) |key_ptr| {
+        part1 += key_ptr.*;
+    }
+
+    const line2 = readLine(&reader.interface) orelse return error.invalid;
+    var list = std.ArrayList(u32).empty;
+    it = std.mem.tokenizeScalar(u8, line2, ',');
+    while(it.next()) |next| {
+        const num = try std.fmt.parseInt(u32, next, 10);
+        try list.append(allocator, num);
+    }
+    std.mem.sort(u32, list.items, void{}, std.sort.asc(u32));
+    var prev: u32 = 99999999;
+    var count: u32 = 0;
+    var part2: u32 = 0;
+    for(list.items) |item| {
+        if(count >= 20) {
+            break;
+        }
+        if(item != prev) {
+            prev = item;
+            count += 1;
+            part2 += item;
+        }
+    }
+
+    const line3 = readLine(&reader.interface) orelse return error.invalid;
+    list.clearRetainingCapacity();
+    it = std.mem.tokenizeScalar(u8, line3, ',');
+    while(it.next()) |next| {
+        const num = try std.fmt.parseInt(u32, next, 10);
+        try list.append(allocator, num);
+    }
+    const max = std.sort.max(u32, list.items, void{}, std.sort.asc(u32)).?;
+    var array = try allocator.alloc(u16, max + 1);
+    @memset(array, 0);
+    for(list.items) |item| {
+        array[item] += 1;
+    }
+    const part3 = std.sort.max(u16, array, void{}, std.sort.asc(u16)).?;
+
+    return [3]u32{part1,part2,part3};
+}
+
 fn add(c1: Complex, c2: Complex) Complex {
     return Complex{.a = c1.a + c2.a, .b = c1.b + c2.b};
 }

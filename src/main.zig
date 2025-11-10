@@ -16,11 +16,11 @@ pub fn main() !void {
 
     println("Day 1: {{ {s}, {s}, {s} }}", .{result1p1, result1p2, result1p3});
 
-    const result2 = try part1.day2();
-    println("Day 2: {{ {s}, {s}, {s} }}", .{result2[0], result2[1], result2[2]});
+    // const result2 = try part1.day2();
+    // println("Day 2: {{ {s}, {s}, {s} }}", .{result2[0], result2[1], result2[2]});
 
-    // const result3 = try part1.day3(allocator);
-    // println("Day 3: {any}", .{result3});
+    const result3 = try part1.day3(allocator);
+    println("Day 3: {any}", .{result3});
 
     // const result4 = try part1.day4(allocator);
     // println("Day 4: {any}", .{result4});
