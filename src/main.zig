@@ -22,8 +22,8 @@ pub fn main() !void {
     const result3 = try part1.day3(allocator);
     println("Day 3: {any}", .{result3});
 
-    // const result4 = try part1.day4(allocator);
-    // println("Day 4: {any}", .{result4});
+    const result4 = try part1.day4(allocator);
+    println("Day 4: {any}", .{result4});
 
     // const result5 = try part1.day5(allocator);
     // println("Day 5: {any}", .{result5});

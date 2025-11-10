@@ -314,6 +314,59 @@ pub fn day3(a: Allocator) ![3]u32 {
     return [3]u32{part1,part2,part3};
 }
 
+pub fn day4(a: Allocator) ![3]u128 {
+    var arena = std.heap.ArenaAllocator.init(a);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
+    const file: fs.File = try fs.cwd().openFile("src/inputs/day4.txt",.{},);
+    defer file.close();
+
+    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
+    var list = std.ArrayList(u32).empty;
+    while(true) {
+        const line = readLine(&reader.interface) orelse break;
+        if(line.len == 0) {
+            break;
+        }
+        try list.append(allocator, try std.fmt.parseInt(u32, line, 10));
+    }
+
+    const part1 = @divTrunc(list.items[0] * 2025, list.items[list.items.len - 1]);
+
+    list.clearRetainingCapacity();
+    while(true) {
+        const line = readLine(&reader.interface) orelse break;
+        if(line.len == 0) {
+            break;
+        }
+        try list.append(allocator, try std.fmt.parseInt(u32, line, 10));
+    }
+
+    const part2 = try std.math.divCeil(u128, @as(u128, @intCast(list.items[list.items.len - 1])) * 10000000000000, list.items[0]);
+
+    list.clearRetainingCapacity();
+    var factor:u32 = 1;
+    while(true) {
+        const line = readLine(&reader.interface) orelse break;
+        if(line.len == 0) {
+            break;
+        }
+        if(line.len < 5) {
+            try list.append(allocator, try std.fmt.parseInt(u32, line, 10));
+        } else {
+            var it = std.mem.tokenizeScalar(u8, line, '|');
+            const a1 = try std.fmt.parseInt(u32, it.next().?, 10);
+            const b1 = try std.fmt.parseInt(u32, it.next().?, 10);
+            factor *= @divExact(b1, a1);
+        }
+    }
+
+    const part3 = @divTrunc(@as(u128, @intCast(list.items[0])) * 100 * factor, list.items[1]);
+
+    return [3]u128{part1,part2,part3};
+}
+
 fn add(c1: Complex, c2: Complex) Complex {
     return Complex{.a = c1.a + c2.a, .b = c1.b + c2.b};
 }
