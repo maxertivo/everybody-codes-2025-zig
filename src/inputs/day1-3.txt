@@ -1,0 +1,3 @@
+Yndacris,Urcalyx,Durnral,Harnjorath,Thazagrath,Tirluth,Cyndnarel,Urakther,Balthgnaris,Naldralis,Kronadir,Vyrlyr,Fenxaril,Sorsin,Braerilor,Sarfeth,Vaelnixis,Nylmir,Vanfeth,Galasis,Hazaris,Uraksarix,Naronar,Zyrlyr,Wynzral,Zorkynar,Bryncarth,Tharncarth,Brythaxar,Lazxel
+
+L16,R15,L13,R41,L13,R32,L19,R16,L35,R14,L19,R36,L44,R32,L45,R41,L49,R5,L34,R19,L5,R46,L5,R27,L5,R18,L5,R9,L5,R34,L5,R40,L5,R25,L5,R6,L5,R29,L5,R36,L5,R47,L34,R27,L31,R33,L29,R28,L30,R35,L34,R23,L31,R29,L17,R21,L32,R16,L34

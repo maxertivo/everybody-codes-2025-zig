@@ -1,0 +1,3 @@
+Zynzar,Elvarthys,Nylmir,Thazfal,Vornnoris,Cyndoryn,Aelral,Cyndeon,Balthkynar,Lazirtal
+
+L7,R6,L1,R6,L2,R9,L1,R6,L5,R1,L6
