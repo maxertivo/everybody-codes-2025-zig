@@ -367,6 +367,132 @@ pub fn day4(a: Allocator) ![3]u128 {
     return [3]u128{part1,part2,part3};
 }
 
+pub fn day5(a: Allocator) ![3]u64 {
+    var arena = std.heap.ArenaAllocator.init(a);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
+    const file: fs.File = try fs.cwd().openFile("src/inputs/day5.txt",.{},);
+    defer file.close();
+
+    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
+    const line1 = readLine(&reader.interface) orelse return error.invalid;
+
+    const sword1 = try getSword(line1, allocator);
+    const qual1 = sword1.quality;
+
+    _ = readLine(&reader.interface);
+    var max: u64 = 0;
+    var min: u64 = std.math.maxInt(u64);
+    while(true) {
+        const line = readLine(&reader.interface) orelse break;
+        if(line.len == 0) {
+            break;
+        }
+        const sword2 = try getSword(line, allocator);
+        const qual = sword2.quality;
+        if(qual < min) {
+            min = qual;
+        }
+        if(qual > max) {
+            max = qual;
+        }
+    }
+
+    var swords = std.ArrayList(*Sword).empty;
+    while(true) {
+        const line = readLine(&reader.interface) orelse break;
+        const sword3 = try getSword(line, allocator);
+        try swords.append(allocator, sword3);
+    }
+    std.mem.sort(*Sword, swords.items, void{}, swordLessThan);
+    std.mem.reverse(*Sword, swords.items);
+
+    var part3: u64 = 0;
+    for(1..swords.items.len+1) |index| {
+        part3 += index * swords.items[index-1].id;
+    }
+
+    return [3]u64{qual1,max - min,part3};
+}
+
+fn swordLessThan(context: void, s1: *Sword, s2: *Sword) bool {
+    _ = context;
+    if(s1.quality < s2.quality) {
+        return true;
+    } else if (s1.quality > s2.quality) {
+        return false;
+    }
+    for(0..s1.list.items.len) |i| {
+        const el1 = s1.list.items[i];
+        const el2 = s2.list.items[i];
+        var buf: [6]u8 = @splat(0);
+        var index: usize = 0;
+        if(el1.left) |left| {
+            index += std.fmt.printInt(buf[index..], left, 10, .lower, .{});
+        }
+        index += std.fmt.printInt(buf[index..], el1.center, 10, .lower, .{});
+        if(el1.right) |right| {
+            index += std.fmt.printInt(buf[index..], right, 10, .lower, .{});
+        }
+        const comp1 = std.fmt.parseInt(u32, buf[0..index], 10) catch 0;
+
+        buf = @splat(0);
+        index = 0;
+        if(el2.left) |left| {
+            index += std.fmt.printInt(buf[index..], left, 10, .lower, .{});
+        }
+        index += std.fmt.printInt(buf[index..], el2.center, 10, .lower, .{});
+        if(el2.right) |right| {
+            index += std.fmt.printInt(buf[index..], right, 10, .lower, .{});
+        }
+        const comp2 = std.fmt.parseInt(u32, buf[0..index], 10) catch 0;
+        if(comp1 < comp2) {
+            return true;
+        } else if (comp2 < comp1) {
+            return false;
+        }
+    }
+    return s1.id < s2.id;
+}
+
+fn getSword(line: []const u8, allocator: Allocator) !*Sword {
+    const sword = try allocator.create(Sword);
+    const list = try allocator.create(std.ArrayList(*Spine));
+    list.* = .empty;
+    var it = std.mem.tokenizeAny(u8, line, ":,");
+    const id = try std.fmt.parseInt(u32, it.next().?, 10);
+    while(it.next()) |next| {
+        const val = try std.fmt.parseInt(u32, next, 10);
+        var placed = false;
+        for(list.items) |segment| {
+            if(val < segment.center and segment.left == null) {
+                segment.left = val;
+                placed = true;
+                break;
+            } else if (val > segment.center and segment.right == null) {
+                segment.right = val;
+                placed = true;
+                break;
+            }
+        }
+        if(!placed) {
+            const spine = try allocator.create(Spine);
+            spine.* = .{.center = val};
+            try list.append(allocator, spine);
+        }
+    }
+
+    var buf: [20]u8 = @splat(0);
+    var index: usize = 0;
+    for(list.items) |item| {
+        index += std.fmt.printInt(buf[index..], item.center, 10, .lower, .{});
+    }
+    const qual = try std.fmt.parseInt(u64, buf[0..index], 10);
+    sword.* = .{.id = id, .list = list, .quality = qual};
+    return sword;
+}
+
 fn add(c1: Complex, c2: Complex) Complex {
     return Complex{.a = c1.a + c2.a, .b = c1.b + c2.b};
 }
@@ -387,4 +513,16 @@ const Instruction = struct {
 const Complex = struct {
     a: i64,
     b: i64,
+};
+
+const Spine = struct {
+    center: u32,
+    left: ?u32 = null,
+    right: ?u32 = null,
+};
+
+const Sword = struct {
+    id: u32,
+    list: *std.ArrayList(*Spine),
+    quality: u64,
 };
