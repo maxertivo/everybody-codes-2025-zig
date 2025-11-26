@@ -1,6 +1,6 @@
 const std = @import("std");
 const part1 = @import("day1to5.zig");
-// const part2 = @import("day7to12.zig");
+const part2 = @import("day6to10.zig");
 // const part3 = @import("day13to18.zig");
 // const part4 = @import("day19to25.zig");
 const utils = @import("utils.zig");
@@ -28,8 +28,8 @@ pub fn main() !void {
     const result5 = try part1.day5(allocator);
     println("Day 5: {any}", .{result5});
 
-    // const result6 = try part1.day6(allocator);
-    // println("Day 6: {any}", .{result6});
+    const result6 = try part2.day6(allocator);
+    println("Day 6: {any}", .{result6});
 
     // const result7 = try part2.day7(allocator);
     // println("Day 7: {{ {s}, {s} }}", .{result7[0], result7[1]});
