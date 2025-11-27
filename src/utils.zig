@@ -135,6 +135,74 @@ pub fn ArrayDeque(comptime T: type) type {
     };
 }
 
+// Map of key to slice of values. Returns empty slice if key not present.
+// Keys must be auto-hashable
+pub fn Multimap(comptime KeyType: type, comptime ValueType: type) type {
+    return struct {
+        map: std.AutoHashMap(KeyType, *std.ArrayList(ValueType)),
+        allocator: Allocator,
+
+        pub fn init(allocator: Allocator) Multimap(KeyType, ValueType) {
+            return Multimap(KeyType, ValueType){ .map = std.AutoHashMap(KeyType, *std.ArrayList(ValueType)).init(allocator), .allocator = allocator };
+        }
+
+        pub fn get(self: *Multimap(KeyType, ValueType), key: KeyType) []ValueType {
+            if (self.map.get(key)) |existing| {
+                return existing.items;
+            } else {
+                return &.{};
+            }
+        }
+
+        pub fn put(self: *Multimap(KeyType, ValueType), key: KeyType, value: ValueType) !void {
+            if (self.map.get(key)) |existing| {
+                try existing.append(self.allocator, value);
+            } else {
+                const list = try self.allocator.create(std.ArrayList(ValueType));
+                list.* = std.ArrayList(ValueType).empty;
+                try list.append(self.allocator, value);
+                try self.map.put(key, list);
+            }
+        }
+
+        pub fn contains(self: *Multimap(KeyType, ValueType), key: KeyType) bool {
+            return self.map.contains(key);
+        }
+
+        // Removes element at index. Does not preserve item order
+        pub fn remove(self: *Multimap(KeyType, ValueType), key: KeyType, index: usize) void {
+            if (self.map.get(key)) |list| {
+                _ = list.swapRemove(index);
+            }
+        }
+
+        pub fn removeKey(self: *Multimap(KeyType, ValueType), key: KeyType) void {
+            if (self.map.get(key)) |val| {
+                val.deinit(self.allocator);
+                self.allocator.destroy(val);
+            }
+            _ = self.map.remove(key);
+        }
+
+        pub fn keyCount(self: *Multimap(KeyType, ValueType)) u64 {
+            return @intCast(self.map.count());
+        }
+
+        pub fn keyIterator(self: *Multimap(KeyType, ValueType)) std.AutoHashMap(KeyType, *std.ArrayList(ValueType)).KeyIterator {
+            return self.map.keyIterator();
+        }
+
+        pub fn deinit(self: *Multimap(KeyType, ValueType)) void {
+            var it = self.map.valueIterator();
+            while (it.next()) |next| {
+                next.*.deinit();
+                self.allocator.destroy(next.*);
+            }
+            self.map.deinit();
+        }
+    };
+}
+
 
 fn AStarContext(comptime State: type, comptime Cost: type) type {
     return struct {

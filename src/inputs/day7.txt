@@ -1,0 +1,40 @@
+Harndax,Azthyris,Harnthyris,Azwyris,Nydax,Harnwyris,Nythyris,Azdax,Nywyris
+
+N > y
+n > t,d,w
+y > t,r,b
+d > a
+i > s
+z > b
+H > a
+a > x,b
+A > z
+w > y
+r > i,n
+t > h
+h > y
+
+Xendthys,Harnnar,Wyrnar,Xendcion,Tharoris,Tharvoran,Zraalmir,Xendnar,Taloris,Talmir,Harnvoran,Talnar,Talcion,Talthys,Talvoran,Talaris,Xendmir,Harncion,Xendvoran,Wyrcion,Tharnar,Xendsar,Harnaris,Wyrtaril,Harnthys,Harnoris,Tharsar,Zraaloris,Harnmir,Zraaloris,Wyrcion,Tharcion,Wyrvoran,Zraalthys,Harnsar,Wyrsar,Tyrtaril,Taltaril,Brylmir,Brylcion,Talsar,Harntaril,Tyrsar,Tyraris,Tyrvoran,Urmir,Harncion,Xendoris,Zraaltaril,Talcion,Wyroris,Zraalsar,Urtaril,Thararis,Tharthys,Urthys,Tharmir,Bryltaril,Urnar,Xendcion,Zraalsar,Zraalmir,Xendaris,Zraalcion,Bryloris,Zraalcion,Xendtaril,Tharcion,Wyrmir,Brylnar,Wyrthys,Zraaltaril,Brylaris,Zraalthys,Brylvoran,Wyraris,Uroris,Urcion,Brylthys,Urvoran,Tyrthys,Tyroris,Zraalaris,Tyrnar,Zraalvoran,Zraalvoran,Zraalnar,Uraris,Tyrcion,Zraalcion,Tyrmir,Brylcion,Thartaril,Zraalcion,Brylsar,Ursar,Zraalnar,Tyrcion,Urcion,Zraalaris
+
+y > s,v,l
+r > a,i,n,s,o,c,t,v,m
+e > v
+i > r,s,o,l
+m > i
+d > s,o,a,c,t,n,v,m
+v > o
+o > r,n
+l > m,s,o,a,c,t,n,v
+H > a
+n > a,s,o,c,t,n,v,m,d
+h > y,v
+a > a,l,v,r,n
+B > r
+W > y
+s > a
+c > i
+T > a,h,y
+Z > r
+t > h,a
+X > e
+U > r
