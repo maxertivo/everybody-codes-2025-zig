@@ -38,3 +38,37 @@ Z > r
 t > h,a
 X > e
 U > r
+
+Ny,Nyl,Nyth,Nyss,Nyrix,Pald,Cael,Fen,Gorath,Ryth,Zyrix,Gar,Grim,Xaral,Elar,Skar,Tharn,Rylar,Bryl,Nex
+
+s > a,s,j,f,c,x,r,z,t
+E > l
+X > a
+N > e,y
+r > a,i,e,j,f,c,x,r,z,s,t,v,n
+F > e
+i > s,o,x,m
+l > y,o,j,f,c,x,r,z,s,t,d,v,a
+a > r,l,v,t
+e > x,t,l,v
+Z > y
+G > o,a,r
+t > h,y
+k > v
+j > o
+C > a
+T > h
+o > r,n,v
+R > y
+y > v,x,r,l
+n > j,f,c,x,r,z,s,t
+x > s,e,j,f,c,x,r,z,t
+B > r
+d > j,f,c,x,r,z,s,t
+S > k
+f > a,e
+c > a
+h > j,f,c,x,r,z,s,t,v
+z > e,i
+P > a
+m > j,f,c,x,r,z,s,t
