@@ -338,6 +338,106 @@ pub fn day7(a: Allocator) ![3][20]u8 {
     return [3][20]u8{ str1, str2, str3 };
 }
 
+pub fn day8(a: Allocator) ![3]u32 {
+    var arena = std.heap.ArenaAllocator.init(a);
+    const allocator = arena.allocator();
+    defer arena.deinit();
+
+    const file: fs.File = try fs.cwd().openFile(
+        "src/inputs/day8.txt",
+        .{},
+    );
+    defer file.close();
+
+    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
+    const line1 = readLine(&reader.interface) orelse return error.invalid;
+
+    const NAILS = 32;
+    var sequence1 = std.ArrayList(i8).empty;
+    var it = std.mem.tokenizeScalar(u8, line1, ',');
+    while (it.next()) |next| {
+        const val = try std.fmt.parseInt(i8, next, 10);
+        try sequence1.append(allocator, val);
+    }
+    var part1: u32 = 0;
+    for (0..sequence1.items.len - 1) |i| {
+        if (@abs(sequence1.items[i + 1] - sequence1.items[i]) == NAILS / 2) {
+            part1 += 1;
+        }
+    }
+
+    const line2 = readLine(&reader.interface) orelse return error.invalid;
+    var sequence2 = std.ArrayList(u32).empty;
+    it = std.mem.tokenizeScalar(u8, line2, ',');
+    while (it.next()) |next| {
+        const val = try std.fmt.parseInt(u32, next, 10);
+        try sequence2.append(allocator, val);
+    }
+    var threads = std.ArrayList(Thread).empty;
+    for (0..sequence2.items.len - 1) |i| {
+        try threads.append(allocator, .{ .a = sequence2.items[i], .b = sequence2.items[i + 1] });
+    }
+    var part2: u32 = 0;
+    for (0..threads.items.len) |i| {
+        const thread = threads.items[i];
+        const min = @min(thread.a, thread.b);
+        const max = @max(thread.a, thread.b);
+        for (0..i) |j| {
+            const thread2 = threads.items[j];
+            const a2 = thread2.a;
+            const b2 = thread2.b;
+            if (a2 > min and a2 < max and (b2 < min or b2 > max)) {
+                part2 += 1;
+            } else if (b2 > min and b2 < max and (a2 < min or a2 > max)) {
+                part2 += 1;
+            }
+        }
+    }
+
+    const line3 = readLine(&reader.interface) orelse return error.invalid;
+    var sequence3 = std.ArrayList(u32).empty;
+    it = std.mem.tokenizeScalar(u8, line3, ',');
+    while (it.next()) |next| {
+        const val = try std.fmt.parseInt(u32, next, 10);
+        try sequence3.append(allocator, val);
+    }
+    threads.clearRetainingCapacity();
+    for (0..sequence3.items.len - 1) |i| {
+        // Convert to 0-indexed
+        try threads.append(allocator, .{ .a = sequence3.items[i] - 1, .b = sequence3.items[i + 1] - 1 });
+    }
+    var part3: u32 = 0;
+    const NAILS3 = 256;
+    const RANGE = 15;
+    for (0..NAILS3 / 2) |i| {
+        for (i + NAILS3 / 2 - RANGE..i + NAILS3 / 2 + RANGE) |j| {
+            var jCopy = j;
+            if (jCopy >= NAILS3) {
+                jCopy -= NAILS3;
+            }
+            const min = @min(i, jCopy);
+            const max = @max(i, jCopy);
+            var count: u32 = 0;
+            for (0..threads.items.len) |k| {
+                const thread = threads.items[k];
+                const a2 = thread.a;
+                const b2 = thread.b;
+                if (a2 > min and a2 < max and (b2 < min or b2 > max)) {
+                    count += 1;
+                } else if (b2 > min and b2 < max and (a2 < min or a2 > max)) {
+                    count += 1;
+                } else if (a2 == min and b2 == max or a2 == max and b2 == min) {
+                    count += 1;
+                }
+            }
+            if (count > part3) {
+                part3 = count;
+            }
+        }
+    }
+    return [3]u32{ part1, part2, part3 };
+}
+
 fn findAllValidStrings(size: u8, multimap: *utils.Multimap(u8, u8), lastChar: u8, resultCache: *std.AutoHashMap(u16, u32)) u32 {
     var sum: u32 = 0;
     for (multimap.get(lastChar)) |possibleChar| {
@@ -392,4 +492,9 @@ const Count = struct {
     a: u32,
     b: u32,
     c: u32,
+};
+
+const Thread = struct {
+    a: u32,
+    b: u32,
 };

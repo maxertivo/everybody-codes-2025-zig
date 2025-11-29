@@ -14,7 +14,7 @@ pub fn main() !void {
     const result1p2 = try part1.day1p2(allocator);
     const result1p3 = try part1.day1p3(allocator);
 
-    println("Day 1: {{ {s}, {s}, {s} }}", .{result1p1, result1p2, result1p3});
+    println("Day 1: {{ {s}, {s}, {s} }}", .{ result1p1, result1p2, result1p3 });
 
     // const result2 = try part1.day2();
     // println("Day 2: {{ {s}, {s}, {s} }}", .{result2[0], result2[1], result2[2]});
@@ -32,10 +32,10 @@ pub fn main() !void {
     println("Day 6: {any}", .{result6});
 
     const result7 = try part2.day7(allocator);
-    println("Day 7: {{ {s}, {s}, {s} }}", .{result7[0], result7[1], result7[2]});
+    println("Day 7: {{ {s}, {s}, {s} }}", .{ result7[0], result7[1], result7[2] });
 
-    // const result8 = try part2.day8(allocator);
-    // println("Day 8: {any}", .{result8});
+    const result8 = try part2.day8(allocator);
+    println("Day 8: {any}", .{result8});
 
     // const result9 = try part2.day9(allocator);
     // println("Day 9: {any}", .{result9});
