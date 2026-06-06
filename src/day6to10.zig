@@ -2,23 +2,13 @@ const std = @import("std");
 const utils = @import("utils.zig");
 
 const Allocator = std.mem.Allocator;
+const Reader = std.Io.Reader;
 const fs = std.fs;
 
 const readLine = utils.readLine;
 
-pub fn day6(a: Allocator) ![3]u64 {
-    var arena = std.heap.ArenaAllocator.init(a);
-    const allocator = arena.allocator();
-    defer arena.deinit();
-
-    const file: fs.File = try fs.cwd().openFile(
-        "src/inputs/day6.txt",
-        .{},
-    );
-    defer file.close();
-
-    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
-    var line = readLine(&reader.interface) orelse return error.invalid;
+pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
+    var line = readLine(reader) orelse return error.invalid;
     var aNum: u32 = 0;
     var part1: u32 = 0;
     for (line) |char| {
@@ -29,7 +19,7 @@ pub fn day6(a: Allocator) ![3]u64 {
         }
     }
 
-    line = readLine(&reader.interface) orelse return error.invalid;
+    line = readLine(reader) orelse return error.invalid;
     aNum = 0;
     var bNum: u32 = 0;
     var cNum: u32 = 0;
@@ -46,7 +36,7 @@ pub fn day6(a: Allocator) ![3]u64 {
         }
     }
 
-    line = readLine(&reader.interface) orelse return error.invalid;
+    line = readLine(reader) orelse return error.invalid;
     const DIST = 1000;
     const fullArray = try allocator.alloc(u8, line.len * 3);
     std.mem.copyForwards(u8, fullArray, line);
@@ -228,24 +218,13 @@ pub fn day6(a: Allocator) ![3]u64 {
     return [3]u64{ part1, part2, count + 998 * middleCount };
 }
 
-pub fn day7(a: Allocator) ![3][20]u8 {
-    var arena = std.heap.ArenaAllocator.init(a);
-    const allocator = arena.allocator();
-    defer arena.deinit();
-
-    const file: fs.File = try fs.cwd().openFile(
-        "src/inputs/day7.txt",
-        .{},
-    );
-    defer file.close();
-
-    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
-    var nameLine = readLine(&reader.interface) orelse return error.invalid;
+pub fn day7(allocator: Allocator, reader: *Reader) ![3][20]u8 {
+    var nameLine = readLine(reader) orelse return error.invalid;
     var multimap = utils.Multimap(u8, u8).init(allocator);
     var stringList = try parseStringList(allocator, nameLine);
-    _ = readLine(&reader.interface);
+    _ = readLine(reader);
     while (true) {
-        const line = readLine(&reader.interface) orelse break;
+        const line = readLine(reader) orelse break;
         if (line.len == 0) {
             break;
         }
@@ -264,12 +243,12 @@ pub fn day7(a: Allocator) ![3][20]u8 {
         }
     }
 
-    nameLine = readLine(&reader.interface) orelse return error.invalid;
+    nameLine = readLine(reader) orelse return error.invalid;
     multimap = utils.Multimap(u8, u8).init(allocator);
     stringList = try parseStringList(allocator, nameLine);
-    _ = readLine(&reader.interface);
+    _ = readLine(reader);
     while (true) {
-        const line = readLine(&reader.interface) orelse break;
+        const line = readLine(reader) orelse break;
         if (line.len == 0) {
             break;
         }
@@ -290,12 +269,12 @@ pub fn day7(a: Allocator) ![3][20]u8 {
     var str2: [20]u8 = @splat(0);
     _ = try std.fmt.bufPrint(&str2, "{d}", .{result2});
 
-    nameLine = readLine(&reader.interface) orelse return error.invalid;
+    nameLine = readLine(reader) orelse return error.invalid;
     multimap = utils.Multimap(u8, u8).init(allocator);
     stringList = try parseStringList(allocator, nameLine);
-    _ = readLine(&reader.interface);
+    _ = readLine(reader);
     while (true) {
-        const line = readLine(&reader.interface) orelse break;
+        const line = readLine(reader) orelse break;
         if (line.len == 0) {
             break;
         }
@@ -338,19 +317,8 @@ pub fn day7(a: Allocator) ![3][20]u8 {
     return [3][20]u8{ str1, str2, str3 };
 }
 
-pub fn day8(a: Allocator) ![3]u32 {
-    var arena = std.heap.ArenaAllocator.init(a);
-    const allocator = arena.allocator();
-    defer arena.deinit();
-
-    const file: fs.File = try fs.cwd().openFile(
-        "src/inputs/day8.txt",
-        .{},
-    );
-    defer file.close();
-
-    var reader = file.reader(utils.GLOBAL_FILE_BUFFER);
-    const line1 = readLine(&reader.interface) orelse return error.invalid;
+pub fn day8(allocator: Allocator, reader: *Reader) ![3]u32 {
+    const line1 = readLine(reader) orelse return error.invalid;
 
     const NAILS = 32;
     var sequence1 = std.ArrayList(i8).empty;
@@ -366,7 +334,7 @@ pub fn day8(a: Allocator) ![3]u32 {
         }
     }
 
-    const line2 = readLine(&reader.interface) orelse return error.invalid;
+    const line2 = readLine(reader) orelse return error.invalid;
     var sequence2 = std.ArrayList(u32).empty;
     it = std.mem.tokenizeScalar(u8, line2, ',');
     while (it.next()) |next| {
@@ -394,7 +362,7 @@ pub fn day8(a: Allocator) ![3]u32 {
         }
     }
 
-    const line3 = readLine(&reader.interface) orelse return error.invalid;
+    const line3 = readLine(reader) orelse return error.invalid;
     var sequence3 = std.ArrayList(u32).empty;
     it = std.mem.tokenizeScalar(u8, line3, ',');
     while (it.next()) |next| {
