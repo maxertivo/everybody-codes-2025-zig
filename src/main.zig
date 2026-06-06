@@ -17,10 +17,10 @@ pub fn main(init: std.process.Init) !void {
     const result1p2 = try solveDay([20]u8, "src/inputs/day1-2.txt", io, allocator, part1.day1p2);
     const result1p3 = try solveDay([20]u8, "src/inputs/day1-3.txt", io, allocator, part1.day1p3);
 
-    println(io, "Day 1: {{ {any}, {any}, {any} }}", .{ result1p1, result1p2, result1p3 });
+    println(io, "Day 1: {{ {s}, {s}, {s} }}", .{ result1p1, result1p2, result1p3 });
 
     // const result2 = try solveDay([3][20]u8, "src/inputs/day2.txt", io, allocator, part1.day2);
-    // println(io, "Day 2: {{ {any}, {any}, {any} }}", .{result2[0], result2[1], result2[2]});
+    // println(io, "Day 2: {{ {s}, {s}, {s} }}", .{result2[0], result2[1], result2[2]});
 
     const result3 = try solveDay([3]u32, "src/inputs/day3.txt", io, allocator, part1.day3);
     println(io, "Day 3: {any}", .{result3});
@@ -35,7 +35,7 @@ pub fn main(init: std.process.Init) !void {
     println(io, "Day 6: {any}", .{result6});
 
     const result7: [3][20]u8 = try solveDay([3][20]u8,"src/inputs/day7.txt", io, allocator, part2.day7);
-    println(io, "Day 7: {{ {any}, {any}, {any} }}", .{ result7[0], result7[1], result7[2] });
+    println(io, "Day 7: {{ {s}, {s}, {s} }}", .{ result7[0], result7[1], result7[2] });
 
     const result8 = try solveDay([3]u32, "src/inputs/day8.txt", io, allocator, part2.day8);
     println(io, "Day 8: {any}", .{result8});
