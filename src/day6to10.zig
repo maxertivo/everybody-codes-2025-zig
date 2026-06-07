@@ -406,6 +406,188 @@ pub fn day8(allocator: Allocator, reader: *Reader) ![3]u32 {
     return [3]u32{ part1, part2, part3 };
 }
 
+pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
+    const line1 = readLine(reader).?[2..];
+    const line2 = readLine(reader).?[2..];
+    const line3 = readLine(reader).?[2..];
+    const offset1: u32 = @intCast(128 - line1.len);
+    const vect1 = convertToVector(line1);
+    const vect2 = convertToVector(line2);
+    const vect3 = convertToVector(line3);
+
+    var result1 = findSimilarity(vect1, vect2, vect3, offset1);
+    if(result1 == null) {
+        result1 = findSimilarity(vect2, vect1, vect3, offset1);
+    }
+    if(result1 == null) {
+        result1 = findSimilarity(vect3, vect1, vect2, offset1);
+    }
+
+    _ = readLine(reader);
+
+    var scales = std.ArrayList(@Vector(128, u4)).empty;
+    var offset2: u32 = 0;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            break;
+        }
+        const start = std.mem.indexOfScalar(u8, line, ':').?;
+        const slice = line[start+1..];
+        offset2 = @intCast(128 - slice.len);
+        try scales.append(allocator, convertToVector(slice));
+    }
+
+    var result2: u32 = 0;
+    for(0..scales.items.len) |i| {
+        const similarity = findParentsAndSimilarity(scales.items, i, offset2);
+        if(similarity) |s| {
+            result2 += s;
+        }
+    }
+
+    scales = std.ArrayList(@Vector(128, u4)).empty;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            break;
+        }
+        const start = std.mem.indexOfScalar(u8, line, ':').?;
+        const slice = line[start+1..];
+        try scales.append(allocator, convertToVector(slice));
+    }
+
+    var allConnections = utils.Multimap(u32, u32).init(allocator);
+    for(0..scales.items.len) |i| {
+        const start: u32 = @intCast(i+1);
+        const parentsOptional = findParents(scales.items, i);
+        if(parentsOptional) |parents| {
+            try allConnections.put(start, parents[0]);
+            try allConnections.put(start, parents[1]);
+            try allConnections.put(parents[0], start);
+            try allConnections.put(parents[1], start);
+            try allConnections.put(parents[0], parents[1]);
+            try allConnections.put(parents[1], parents[0]);
+        }
+    }
+
+    var scaleSet = std.AutoHashMap(u32, void).init(allocator);
+    var fullScaleSet = std.AutoHashMap(u32, void).init(allocator);
+    var deque = try std.Deque(u32).initCapacity(allocator, 50);
+    var maxCount: u32 = 0;
+    var result3: u32 = 0;
+    for(0..scales.items.len) |i| {
+        const startingChild: u32 = @intCast(i+1);
+        if(fullScaleSet.contains(startingChild)) {
+            continue;
+        }
+        deque.pushBackAssumeCapacity(startingChild);
+        try scaleSet.put(startingChild, void{});
+        while(deque.popFront()) |node| {
+            const connections = allConnections.get(node);
+            for(connections) |connection| {
+                if(!scaleSet.contains(connection)) {
+                    try scaleSet.put(connection, void{});
+                    deque.pushBackAssumeCapacity(connection);
+                }
+            }
+        }
+        std.debug.assert(deque.len == 0);
+        var sum: u32 = 0;
+        var it = scaleSet.keyIterator();
+        while(it.next()) |key| {
+            try fullScaleSet.put(key.*, void{});
+            sum += key.*;
+        }
+        if(scaleSet.count() > maxCount) {
+            maxCount = scaleSet.count();
+            result3 = sum;
+        }
+        scaleSet.clearRetainingCapacity();
+    }
+
+    return [3]u32{result1.?,result2,result3};
+}
+
+fn convertToVector(line: []const u8) @Vector(128, u4) {
+    var result: [128]u4 = @splat(@intFromEnum(Dna.A));
+    for(0..128) |i| {
+        if(i >= line.len) {
+            break;
+        }
+        const char = line[i];
+        result[i] = switch (char) {
+            'A' => @intFromEnum(Dna.A),
+            'G' => @intFromEnum(Dna.G),
+            'T' => @intFromEnum(Dna.T),
+            'C' => @intFromEnum(Dna.C),
+            else => unreachable,
+        };
+    }
+
+    return result;
+}
+
+fn findParents(scales: []@Vector(128, u4), childIndex:usize) ?[2]u32 {
+    const child = scales[childIndex];
+    for(0..scales.len) |j| {
+        if(j == childIndex) {
+            continue;
+        }
+        for(j+1..scales.len) |k| {
+            if(k == childIndex) {
+                continue;
+            }
+            if(isParents(child, scales[j], scales[k])) {
+                return [2]u32 {@intCast(j+1), @intCast(k+1)};
+            }
+        }
+    }
+    return null;
+}
+
+fn findParentsAndSimilarity(scales: []@Vector(128, u4), childIndex: usize, offset: u32) ?u32 {
+    const child = scales[childIndex];
+    for(0..scales.len) |j| {
+        if(j == childIndex) {
+            continue;
+        }
+        for(j+1..scales.len) |k| {
+            if(k == childIndex) {
+                continue;
+            }
+            if(findSimilarity(child, scales[j], scales[k], offset)) |result| {
+                return result;
+            }
+        }
+    }
+    return null;
+}
+
+fn findSimilarity(child: [128]u4, parent1: [128]u4, parent2: [128]u4, offset: u32) ?u32{
+    if(!isParents(child, parent1, parent2)) {
+        return null;
+    }
+    var match1: u32 = 0;
+    var match2: u32 = 0;
+    for(0..128) |i| {
+        if(child[i] == parent1[i]) {
+            match1 += 1;
+        }
+        if(child[i] == parent2[i]) {
+            match2 += 1;
+        }
+    }
+    return (match1 - offset) * (match2 - offset);
+}
+
+fn isParents(child: [128]u4, parent1: [128]u4, parent2: [128]u4) bool {
+    for(0..128) |i|  {
+        if(child[i] != parent1[i] and child[i] != parent2[i]) {
+            return false;
+        }
+    }
+    return true;
+}
+
 fn findAllValidStrings(size: u8, multimap: *utils.Multimap(u8, u8), lastChar: u8, resultCache: *std.AutoHashMap(u16, u32)) u32 {
     var sum: u32 = 0;
     for (multimap.get(lastChar)) |possibleChar| {
@@ -455,6 +637,13 @@ fn isStrValid(string: []u8, multimap: *utils.Multimap(u8, u8)) bool {
     }
     return true;
 }
+
+const Dna = enum(u4) {
+        C = 1,
+        A = 2,
+        G = 4,
+        T = 8
+    };
 
 const Count = struct {
     a: u32,
