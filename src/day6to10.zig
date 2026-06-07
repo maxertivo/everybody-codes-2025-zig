@@ -622,13 +622,6 @@ fn isStrValid(string: []u8, multimap: *utils.Multimap(u8, u8)) bool {
     return true;
 }
 
-const Dna = enum(u4) {
-        C = 1,
-        A = 2,
-        G = 4,
-        T = 8
-    };
-
 const Count = struct {
     a: u32,
     b: u32,
