@@ -410,49 +410,46 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
     const line1 = readLine(reader).?[2..];
     const line2 = readLine(reader).?[2..];
     const line3 = readLine(reader).?[2..];
-    const offset1: u32 = @intCast(128 - line1.len);
-    const vect1 = convertToVector(line1);
-    const vect2 = convertToVector(line2);
-    const vect3 = convertToVector(line3);
+    const int1 = convertToInt(line1);
+    const int2 = convertToInt(line2);
+    const int3 = convertToInt(line3);
 
-    var result1 = findSimilarity(vect1, vect2, vect3, offset1);
+    var result1 = findSimilarity(int1, int2, int3);
     if(result1 == null) {
-        result1 = findSimilarity(vect2, vect1, vect3, offset1);
+        result1 = findSimilarity(int2, int1, int3);
     }
     if(result1 == null) {
-        result1 = findSimilarity(vect3, vect1, vect2, offset1);
+        result1 = findSimilarity(int3, int1, int2);
     }
 
     _ = readLine(reader);
 
-    var scales = std.ArrayList(@Vector(128, u4)).empty;
-    var offset2: u32 = 0;
+    var scales = std.ArrayList(u512).empty;
     while(readLine(reader)) |line| {
         if(line.len == 0) {
             break;
         }
         const start = std.mem.indexOfScalar(u8, line, ':').?;
         const slice = line[start+1..];
-        offset2 = @intCast(128 - slice.len);
-        try scales.append(allocator, convertToVector(slice));
+        try scales.append(allocator, convertToInt(slice));
     }
 
     var result2: u32 = 0;
     for(0..scales.items.len) |i| {
-        const similarity = findParentsAndSimilarity(scales.items, i, offset2);
+        const similarity = findParentsAndSimilarity(scales.items, i);
         if(similarity) |s| {
             result2 += s;
         }
     }
 
-    scales = std.ArrayList(@Vector(128, u4)).empty;
+    scales = std.ArrayList(u512).empty;
     while(readLine(reader)) |line| {
         if(line.len == 0) {
             break;
         }
         const start = std.mem.indexOfScalar(u8, line, ':').?;
         const slice = line[start+1..];
-        try scales.append(allocator, convertToVector(slice));
+        try scales.append(allocator, convertToInt(slice));
     }
 
     var allConnections = utils.Multimap(u32, u32).init(allocator);
@@ -507,18 +504,19 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
     return [3]u32{result1.?,result2,result3};
 }
 
-fn convertToVector(line: []const u8) @Vector(128, u4) {
-    var result: [128]u4 = @splat(@intFromEnum(Dna.A));
+fn convertToInt(line: []const u8) u512 {
+    var result: u512 = 0;
     for(0..128) |i| {
+        result <<= 4;
         if(i >= line.len) {
             break;
         }
         const char = line[i];
-        result[i] = switch (char) {
-            'A' => @intFromEnum(Dna.A),
-            'G' => @intFromEnum(Dna.G),
-            'T' => @intFromEnum(Dna.T),
-            'C' => @intFromEnum(Dna.C),
+        result += switch (char) {
+            'A' => 0b0001,
+            'G' => 0b0010,
+            'T' => 0b0100,
+            'C' => 0b1000,
             else => unreachable,
         };
     }
@@ -526,7 +524,7 @@ fn convertToVector(line: []const u8) @Vector(128, u4) {
     return result;
 }
 
-fn findParents(scales: []@Vector(128, u4), childIndex:usize) ?[2]u32 {
+fn findParents(scales: []u512, childIndex:usize) ?[2]u32 {
     const child = scales[childIndex];
     for(0..scales.len) |j| {
         if(j == childIndex) {
@@ -544,7 +542,7 @@ fn findParents(scales: []@Vector(128, u4), childIndex:usize) ?[2]u32 {
     return null;
 }
 
-fn findParentsAndSimilarity(scales: []@Vector(128, u4), childIndex: usize, offset: u32) ?u32 {
+fn findParentsAndSimilarity(scales: []u512, childIndex: usize) ?u32 {
     const child = scales[childIndex];
     for(0..scales.len) |j| {
         if(j == childIndex) {
@@ -554,7 +552,7 @@ fn findParentsAndSimilarity(scales: []@Vector(128, u4), childIndex: usize, offse
             if(k == childIndex) {
                 continue;
             }
-            if(findSimilarity(child, scales[j], scales[k], offset)) |result| {
+            if(findSimilarity(child, scales[j], scales[k])) |result| {
                 return result;
             }
         }
@@ -562,30 +560,16 @@ fn findParentsAndSimilarity(scales: []@Vector(128, u4), childIndex: usize, offse
     return null;
 }
 
-fn findSimilarity(child: [128]u4, parent1: [128]u4, parent2: [128]u4, offset: u32) ?u32{
-    if(!isParents(child, parent1, parent2)) {
+fn findSimilarity(c: u512, p1: u512, p2: u512) ?u32{
+    if(!isParents(c, p1, p2)) {
         return null;
     }
-    var match1: u32 = 0;
-    var match2: u32 = 0;
-    for(0..128) |i| {
-        if(child[i] == parent1[i]) {
-            match1 += 1;
-        }
-        if(child[i] == parent2[i]) {
-            match2 += 1;
-        }
-    }
-    return (match1 - offset) * (match2 - offset);
+
+    return @as(u32, @popCount(c & p1)) * @as(u32, @popCount(c & p2));
 }
 
-fn isParents(child: [128]u4, parent1: [128]u4, parent2: [128]u4) bool {
-    for(0..128) |i|  {
-        if(child[i] != parent1[i] and child[i] != parent2[i]) {
-            return false;
-        }
-    }
-    return true;
+fn isParents(c: u512, p1: u512, p2: u512) bool {
+    return (c & (p1 | p2) == c);
 }
 
 fn findAllValidStrings(size: u8, multimap: *utils.Multimap(u8, u8), lastChar: u8, resultCache: *std.AutoHashMap(u16, u32)) u32 {
