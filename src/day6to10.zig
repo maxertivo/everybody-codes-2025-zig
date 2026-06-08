@@ -504,6 +504,76 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
     return [3]u32{result1.?,result2,result3};
 }
 
+pub fn day10(allocator: Allocator, reader: *Reader) ![3]u32 {
+    var grid: [25][25]Tile = @splat(@splat(Tile.EMPTY));
+    var start = Coord{.x = 0, .y = 0};
+    var y1: i32 = 0;
+    while(readLine(reader)) |line| {
+        var x1: i32 = 0;
+        for(line) |char| {
+            if(char == 'S') {
+                grid[@abs(x1)][@abs(y1)] = Tile.SHEEP;
+            }
+            if(char == 'D') {
+                start = .{.x = x1, .y = y1};
+            }
+            x1 += 1;
+        }
+        y1 += 1;
+    }
+    var result1: u32 = 0;
+    var set1 = std.AutoHashMap(Coord,void).init(allocator);
+    var set2 = std.AutoHashMap(Coord, void).init(allocator);
+    try set1.put(start, void{});
+    try populateReachable(&set2, &set1, @abs(y1));
+    try populateReachable(&set1, &set2, @abs(y1));
+    try populateReachable(&set2, &set1, @abs(y1));
+    try populateReachable(&set1, &set2, @abs(y1));
+    var it = set1.keyIterator();
+    while(it.next()) |key| {
+        if(grid[@abs(key.x)][@abs(key.y)] == Tile.SHEEP) {
+            result1 += 1;
+        }
+    }
+    return [3]u32 {result1,0,0};
+}
+
+fn populateReachable(result: *std.AutoHashMap(Coord, void), input: *std.AutoHashMap(Coord, void), dim: u32) !void {
+    var it = input.keyIterator();
+    while(it.next()) |coord| {
+        const c = coord.*;
+        if(inbounds(c.x-2, c.y - 1, dim)) {
+            try result.put(.{.x = c.x-2, .y=c.y-1}, void{});
+        }
+        if(inbounds(c.x-2, c.y + 1, dim)) {
+            try result.put(.{.x = c.x-2, .y=c.y+1}, void{});
+        }
+        if(inbounds(c.x-1, c.y - 2, dim)) {
+            try result.put(.{.x = c.x-1, .y=c.y-2}, void{});
+        }
+        if(inbounds(c.x-1, c.y + 2, dim)) {
+            try result.put(.{.x = c.x-1, .y=c.y+2}, void{});
+        }
+        if(inbounds(c.x+1, c.y - 2, dim)) {
+            try result.put(.{.x = c.x+1, .y=c.y-2}, void{});
+        }
+        if(inbounds(c.x+1, c.y + 2, dim)) {
+            try result.put(.{.x = c.x+1, .y=c.y+2}, void{});
+        }
+        if(inbounds(c.x+2, c.y - 1, dim)) {
+            try result.put(.{.x = c.x+2, .y=c.y-1}, void{});
+        }
+        if(inbounds(c.x+2, c.y + 1, dim)) {
+            try result.put(.{.x = c.x+2, .y=c.y+1}, void{});
+        }
+        try result.put(c, void{});
+    }
+}
+
+fn inbounds(x: i32, y: i32, dim: u32) bool {
+    return x >= 0 and x < dim and y >= 0 and y < dim;
+}
+
 fn convertToInt(line: []const u8) u512 {
     var result: u512 = 0;
     for(0..128) |i| {
@@ -631,4 +701,14 @@ const Count = struct {
 const Thread = struct {
     a: u32,
     b: u32,
+};
+
+const Tile = enum {
+    EMPTY,
+    SHEEP
+};
+
+const Coord = struct {
+    x: i32,
+    y: i32
 };
