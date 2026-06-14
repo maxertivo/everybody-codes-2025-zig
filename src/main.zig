@@ -34,7 +34,7 @@ pub fn main(init: std.process.Init) !void {
     const result6 = try solveDay([3]u64, "src/inputs/day6.txt", io, allocator, part2.day6);
     println(io, "Day 6: {any}", .{result6});
 
-    const result7: [3][20]u8 = try solveDay([3][20]u8,"src/inputs/day7.txt", io, allocator, part2.day7);
+    const result7: [3][20]u8 = try solveDay([3][20]u8, "src/inputs/day7.txt", io, allocator, part2.day7);
     println(io, "Day 7: {{ {s}, {s}, {s} }}", .{ result7[0], result7[1], result7[2] });
 
     const result8 = try solveDay([3]u32, "src/inputs/day8.txt", io, allocator, part2.day8);
@@ -43,7 +43,7 @@ pub fn main(init: std.process.Init) !void {
     const result9 = try solveDay([3]u32, "src/inputs/day9.txt", io, allocator, part2.day9);
     println(io, "Day 9: {any}", .{result9});
 
-    const result10 = try solveDay([3]u32, "src/inputs/day10.txt", io, allocator, part2.day10);
+    const result10 = try solveDay([3]u64, "src/inputs/day10.txt", io, allocator, part2.day10);
     println(io, "Day 10: {any}", .{result10});
 
     // const result11 = try part2.day11(allocator);
@@ -81,8 +81,7 @@ pub fn main(init: std.process.Init) !void {
 }
 
 // Prepares the allocator and file reader for each solution function
-fn solveDay(comptime Result: type, comptime path: []const u8, io: std.Io, arena: *ArenaAllocator,
-        comptime solverFn: fn(allocator: Allocator, reader: *Reader) anyerror!Result) anyerror!Result {
+fn solveDay(comptime Result: type, comptime path: []const u8, io: std.Io, arena: *ArenaAllocator, comptime solverFn: fn (allocator: Allocator, reader: *Reader) anyerror!Result) anyerror!Result {
     const allocator = arena.allocator();
     defer _ = arena.reset(.free_all);
 

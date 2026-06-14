@@ -415,48 +415,48 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
     const int3 = convertToInt(line3);
 
     var result1 = findSimilarity(int1, int2, int3);
-    if(result1 == null) {
+    if (result1 == null) {
         result1 = findSimilarity(int2, int1, int3);
     }
-    if(result1 == null) {
+    if (result1 == null) {
         result1 = findSimilarity(int3, int1, int2);
     }
 
     _ = readLine(reader);
 
     var scales = std.ArrayList(u512).empty;
-    while(readLine(reader)) |line| {
-        if(line.len == 0) {
+    while (readLine(reader)) |line| {
+        if (line.len == 0) {
             break;
         }
         const start = std.mem.indexOfScalar(u8, line, ':').?;
-        const slice = line[start+1..];
+        const slice = line[start + 1 ..];
         try scales.append(allocator, convertToInt(slice));
     }
 
     var result2: u32 = 0;
-    for(0..scales.items.len) |i| {
+    for (0..scales.items.len) |i| {
         const similarity = findParentsAndSimilarity(scales.items, i);
-        if(similarity) |s| {
+        if (similarity) |s| {
             result2 += s;
         }
     }
 
     scales = std.ArrayList(u512).empty;
-    while(readLine(reader)) |line| {
-        if(line.len == 0) {
+    while (readLine(reader)) |line| {
+        if (line.len == 0) {
             break;
         }
         const start = std.mem.indexOfScalar(u8, line, ':').?;
-        const slice = line[start+1..];
+        const slice = line[start + 1 ..];
         try scales.append(allocator, convertToInt(slice));
     }
 
     var allConnections = utils.Multimap(u32, u32).init(allocator);
-    for(0..scales.items.len) |i| {
-        const start: u32 = @intCast(i+1);
+    for (0..scales.items.len) |i| {
+        const start: u32 = @intCast(i + 1);
         const parentsOptional = findParents(scales.items, i);
-        if(parentsOptional) |parents| {
+        if (parentsOptional) |parents| {
             try allConnections.put(start, parents[0]);
             try allConnections.put(start, parents[1]);
             try allConnections.put(parents[0], start);
@@ -471,17 +471,17 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
     var deque = try std.Deque(u32).initCapacity(allocator, 50);
     var maxCount: u32 = 0;
     var result3: u32 = 0;
-    for(0..scales.items.len) |i| {
-        const startingChild: u32 = @intCast(i+1);
-        if(fullScaleSet.contains(startingChild)) {
+    for (0..scales.items.len) |i| {
+        const startingChild: u32 = @intCast(i + 1);
+        if (fullScaleSet.contains(startingChild)) {
             continue;
         }
         deque.pushBackAssumeCapacity(startingChild);
         try scaleSet.put(startingChild, void{});
-        while(deque.popFront()) |node| {
+        while (deque.popFront()) |node| {
             const connections = allConnections.get(node);
-            for(connections) |connection| {
-                if(!scaleSet.contains(connection)) {
+            for (connections) |connection| {
+                if (!scaleSet.contains(connection)) {
                     try scaleSet.put(connection, void{});
                     deque.pushBackAssumeCapacity(connection);
                 }
@@ -490,95 +490,305 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
         std.debug.assert(deque.len == 0);
         var sum: u32 = 0;
         var it = scaleSet.keyIterator();
-        while(it.next()) |key| {
+        while (it.next()) |key| {
             try fullScaleSet.put(key.*, void{});
             sum += key.*;
         }
-        if(scaleSet.count() > maxCount) {
+        if (scaleSet.count() > maxCount) {
             maxCount = scaleSet.count();
             result3 = sum;
         }
         scaleSet.clearRetainingCapacity();
     }
 
-    return [3]u32{result1.?,result2,result3};
+    return [3]u32{ result1.?, result2, result3 };
 }
 
-pub fn day10(allocator: Allocator, reader: *Reader) ![3]u32 {
-    var grid: [25][25]Tile = @splat(@splat(Tile.EMPTY));
-    var start = Coord{.x = 0, .y = 0};
-    var y1: i32 = 0;
-    while(readLine(reader)) |line| {
-        var x1: i32 = 0;
-        for(line) |char| {
-            if(char == 'S') {
-                grid[@abs(x1)][@abs(y1)] = Tile.SHEEP;
+pub fn day10(allocator: Allocator, reader: *Reader) ![3]u64 {
+    var sheep = std.AutoHashMap(Coord, void).init(allocator);
+    var hideouts = std.AutoHashMap(Coord, void).init(allocator);
+    var start, var dimX, var dimY = try readMap(reader, &sheep, &hideouts);
+    var result1: u32 = 0;
+    var set1 = std.AutoHashMap(Coord, void).init(allocator);
+    var set2 = std.AutoHashMap(Coord, void).init(allocator);
+    try set1.put(start, void{});
+    for (0..2) |_| {
+        try populateReachable(&set2, &set1, @abs(dimX), @abs(dimY));
+        var it = set2.keyIterator();
+        while (it.next()) |key| {
+            if (sheep.contains(key.*)) {
+                result1 += 1;
+                _ = sheep.remove(key.*);
             }
-            if(char == 'D') {
-                start = .{.x = x1, .y = y1};
+        }
+        try populateReachable(&set1, &set2, @abs(dimX), @abs(dimY));
+        it = set1.keyIterator();
+        while (it.next()) |key| {
+            if (sheep.contains(key.*)) {
+                result1 += 1;
+                _ = sheep.remove(key.*);
+            }
+        }
+    }
+
+    sheep.clearRetainingCapacity();
+    hideouts.clearRetainingCapacity();
+    start, dimX, dimY = try readMap(reader, &sheep, &hideouts);
+    set1.clearRetainingCapacity();
+    set2.clearRetainingCapacity();
+    try set1.put(start, void{});
+    var result2: u32 = 0;
+    var count: u8 = 0;
+    while (count < 10) {
+        try populateReachable(&set2, &set1, @abs(dimX), @abs(dimY));
+        var it = set2.keyIterator();
+        while (it.next()) |key| {
+            if (sheep.contains(key.*) and !hideouts.contains(key.*)) {
+                result2 += 1;
+                _ = sheep.remove(key.*);
+            }
+        }
+        try updateSheep(allocator, &sheep, dimY);
+        it = set2.keyIterator();
+        while (it.next()) |key| {
+            if (sheep.contains(key.*) and !hideouts.contains(key.*)) {
+                result2 += 1;
+                _ = sheep.remove(key.*);
+            }
+        }
+
+        try populateReachable(&set1, &set2, @abs(dimX), @abs(dimY));
+        it = set1.keyIterator();
+        while (it.next()) |key| {
+            if (sheep.contains(key.*) and !hideouts.contains(key.*)) {
+                result2 += 1;
+                _ = sheep.remove(key.*);
+            }
+        }
+        try updateSheep(allocator, &sheep, dimY);
+        it = set1.keyIterator();
+        while (it.next()) |key| {
+            if (sheep.contains(key.*) and !hideouts.contains(key.*)) {
+                result2 += 1;
+                _ = sheep.remove(key.*);
+            }
+        }
+        count += 1;
+    }
+
+    sheep.clearRetainingCapacity();
+    hideouts.clearRetainingCapacity();
+    start, dimX, dimY = try readMap(reader, &sheep, &hideouts);
+    var sheepKey: u49 = 0;
+    var it = sheep.keyIterator();
+    while (it.next()) |key| {
+        const bit: u6 = @intCast(key.*.y * dimX + key.*.x);
+        sheepKey += (@as(u49, 1) << bit);
+    }
+    const dragonStart: u7 = @intCast(start.y * dimX + start.x);
+    const initialState = State{ .sheep = sheepKey, .dragon = dragonStart, .dragonTurn = false };
+    var stateToCountMap = std.AutoHashMap(u64, u64).init(allocator);
+    const result3 = try getOrCalculate(initialState, &stateToCountMap, convertHideouts(&hideouts, dimX), dimX, dimY, allocator);
+
+    return [3]u64{ result1, result2, result3 };
+}
+
+fn convertHideouts(hideouts: *std.AutoHashMap(Coord, void), dimX: i32) u49 {
+    var it = hideouts.keyIterator();
+    var result: u49 = 0;
+    while (it.next()) |key| {
+        const bit: u6 = @intCast(key.*.y * dimX + key.*.x);
+        result += (@as(u49, 1) << bit);
+    }
+    return result;
+}
+
+fn getOrCalculate(state: State, stateToCountMap: *std.AutoHashMap(u64, u64), hideouts: u49, dimX: i32, dimY: i32, allocator: Allocator) !u64 {
+    if (stateToCountMap.get(@bitCast(state))) |count| {
+        return count;
+    }
+    var result: u64 = 0;
+    const states = try getNextStates(state, hideouts, dimX, dimY, allocator);
+    for (states.items) |newState| {
+        if (newState.sheep == 0) {
+            result += 1;
+        } else {
+            const evaluatedState = try getOrCalculate(newState, stateToCountMap, hideouts, dimX, dimY, allocator);
+            try stateToCountMap.put(@bitCast(newState), evaluatedState);
+            result += evaluatedState;
+        }
+    }
+    return result;
+}
+
+fn getNextStates(state: State, hideouts: u49, dimX: i32, dimY: i32, allocator: Allocator) !std.ArrayList(State) {
+    var list = std.ArrayList(State).empty;
+    const sheep = state.sheep;
+    const c = Coord{ .x = @mod(state.dragon, @as(u7, @intCast(dimX))), .y = @divFloor(state.dragon, @as(u7, @intCast(dimX))) };
+    if (state.dragonTurn) {
+        if (inbounds(c.x - 2, c.y - 1, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x - 2, .y = c.y - 1 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x - 2, c.y + 1, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x - 2, .y = c.y + 1 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x - 1, c.y - 2, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x - 1, .y = c.y - 2 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x - 1, c.y + 2, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x - 1, .y = c.y + 2 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x + 1, c.y - 2, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x + 1, .y = c.y - 2 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x + 1, c.y + 2, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x + 1, .y = c.y + 2 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x + 2, c.y - 1, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x + 2, .y = c.y - 1 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        if (inbounds(c.x + 2, c.y + 1, @abs(dimX), @abs(dimY))) {
+            const next = Coord{ .x = c.x + 2, .y = c.y + 1 };
+            const nextInt: u7 = @intCast(next.y * dimX + next.x);
+            const nextSheep = checkSheep(next, sheep, hideouts, dimX);
+            try list.append(allocator, .{ .sheep = nextSheep, .dragon = nextInt, .dragonTurn = false });
+        }
+        return list;
+    } else {
+        var sheepCopy = state.sheep;
+        var hideoutsCopy = hideouts;
+        hideoutsCopy >>= @as(u6, @intCast(dimX)); // skip one row so now it corresponds to where the sheep will move
+        var allWaitingForDragon = true;
+        for (0..49) |i| {
+            const bit: u6 = @intCast(i);
+            const bitSigned: i32 = @intCast(i);
+            if (sheepCopy & 1 == 1) {
+                const x = @mod(bitSigned, dimX);
+                const y = @divFloor(bitSigned, dimX);
+                const nextSheep = state.sheep - (@as(u49, 1) << bit) + (@as(u49, 1) << (bit + @as(u6, @intCast(dimX))));
+                if (((c.x != x or c.y != y + 1) or hideoutsCopy & 1 == 1) and y + 1 < dimY) { // need to check hideouts correctly
+                    try list.append(allocator, .{ .sheep = nextSheep, .dragon = state.dragon, .dragonTurn = true });
+                } else if (y + 1 >= dimY) {
+                    allWaitingForDragon = false;
+                }
+            }
+            sheepCopy >>= 1;
+            hideoutsCopy >>= 1;
+        }
+        if (list.items.len == 0 and allWaitingForDragon) {
+            try list.append(allocator, .{ .sheep = state.sheep, .dragon = state.dragon, .dragonTurn = true });
+        }
+    }
+    return list;
+}
+
+fn checkSheep(dragon: Coord, sheep: u49, hideouts: u49, dimX: i32) u49 {
+    const bit: u6 = @intCast(dragon.y * dimX + dragon.x);
+    const mask: u49 = ~(@as(u49, 1) << bit) | hideouts;
+    return sheep & mask;
+}
+
+fn updateSheep(allocator: Allocator, sheep: *std.AutoHashMap(Coord, void), dim: i32) !void {
+    var it = sheep.keyIterator();
+    var list = std.ArrayList(Coord).empty;
+    while (it.next()) |key| {
+        try list.append(allocator, key.*);
+    }
+    sheep.clearRetainingCapacity();
+    for (list.items) |item| {
+        if (item.y < dim - 1) {
+            try sheep.put(.{ .x = item.x, .y = item.y + 1 }, void{});
+        }
+    }
+}
+
+fn readMap(reader: *Reader, sheep: *std.AutoHashMap(Coord, void), hideouts: *std.AutoHashMap(Coord, void)) !struct { Coord, i32, i32 } {
+    var start = Coord{ .x = 0, .y = 0 };
+    var y1: i32 = 0;
+    var x1: i32 = 0;
+    while (readLine(reader)) |line| {
+        if (line.len == 0) {
+            break;
+        }
+        x1 = 0;
+        for (line) |char| {
+            if (char == 'S') {
+                try sheep.put(.{ .x = x1, .y = y1 }, void{});
+            }
+            if (char == '#') {
+                try hideouts.put(.{ .x = x1, .y = y1 }, void{});
+            }
+            if (char == 'D') {
+                start = .{ .x = x1, .y = y1 };
             }
             x1 += 1;
         }
         y1 += 1;
     }
-    var result1: u32 = 0;
-    var set1 = std.AutoHashMap(Coord,void).init(allocator);
-    var set2 = std.AutoHashMap(Coord, void).init(allocator);
-    try set1.put(start, void{});
-    try populateReachable(&set2, &set1, @abs(y1));
-    try populateReachable(&set1, &set2, @abs(y1));
-    try populateReachable(&set2, &set1, @abs(y1));
-    try populateReachable(&set1, &set2, @abs(y1));
-    var it = set1.keyIterator();
-    while(it.next()) |key| {
-        if(grid[@abs(key.x)][@abs(key.y)] == Tile.SHEEP) {
-            result1 += 1;
-        }
-    }
-    return [3]u32 {result1,0,0};
+    return .{ start, x1, y1 };
 }
 
-fn populateReachable(result: *std.AutoHashMap(Coord, void), input: *std.AutoHashMap(Coord, void), dim: u32) !void {
+fn populateReachable(result: *std.AutoHashMap(Coord, void), input: *std.AutoHashMap(Coord, void), dimX: u32, dimY: u32) !void {
     var it = input.keyIterator();
-    while(it.next()) |coord| {
+    while (it.next()) |coord| {
         const c = coord.*;
-        if(inbounds(c.x-2, c.y - 1, dim)) {
-            try result.put(.{.x = c.x-2, .y=c.y-1}, void{});
+        if (inbounds(c.x - 2, c.y - 1, dimX, dimY)) {
+            try result.put(.{ .x = c.x - 2, .y = c.y - 1 }, void{});
         }
-        if(inbounds(c.x-2, c.y + 1, dim)) {
-            try result.put(.{.x = c.x-2, .y=c.y+1}, void{});
+        if (inbounds(c.x - 2, c.y + 1, dimX, dimY)) {
+            try result.put(.{ .x = c.x - 2, .y = c.y + 1 }, void{});
         }
-        if(inbounds(c.x-1, c.y - 2, dim)) {
-            try result.put(.{.x = c.x-1, .y=c.y-2}, void{});
+        if (inbounds(c.x - 1, c.y - 2, dimX, dimY)) {
+            try result.put(.{ .x = c.x - 1, .y = c.y - 2 }, void{});
         }
-        if(inbounds(c.x-1, c.y + 2, dim)) {
-            try result.put(.{.x = c.x-1, .y=c.y+2}, void{});
+        if (inbounds(c.x - 1, c.y + 2, dimX, dimY)) {
+            try result.put(.{ .x = c.x - 1, .y = c.y + 2 }, void{});
         }
-        if(inbounds(c.x+1, c.y - 2, dim)) {
-            try result.put(.{.x = c.x+1, .y=c.y-2}, void{});
+        if (inbounds(c.x + 1, c.y - 2, dimX, dimY)) {
+            try result.put(.{ .x = c.x + 1, .y = c.y - 2 }, void{});
         }
-        if(inbounds(c.x+1, c.y + 2, dim)) {
-            try result.put(.{.x = c.x+1, .y=c.y+2}, void{});
+        if (inbounds(c.x + 1, c.y + 2, dimX, dimY)) {
+            try result.put(.{ .x = c.x + 1, .y = c.y + 2 }, void{});
         }
-        if(inbounds(c.x+2, c.y - 1, dim)) {
-            try result.put(.{.x = c.x+2, .y=c.y-1}, void{});
+        if (inbounds(c.x + 2, c.y - 1, dimX, dimY)) {
+            try result.put(.{ .x = c.x + 2, .y = c.y - 1 }, void{});
         }
-        if(inbounds(c.x+2, c.y + 1, dim)) {
-            try result.put(.{.x = c.x+2, .y=c.y+1}, void{});
+        if (inbounds(c.x + 2, c.y + 1, dimX, dimY)) {
+            try result.put(.{ .x = c.x + 2, .y = c.y + 1 }, void{});
         }
-        try result.put(c, void{});
     }
 }
 
-fn inbounds(x: i32, y: i32, dim: u32) bool {
-    return x >= 0 and x < dim and y >= 0 and y < dim;
+fn inbounds(x: i32, y: i32, dimX: u32, dimY: u32) bool {
+    return x >= 0 and x < dimX and y >= 0 and y < dimY;
 }
 
 fn convertToInt(line: []const u8) u512 {
     var result: u512 = 0;
-    for(0..128) |i| {
+    for (0..128) |i| {
         result <<= 4;
-        if(i >= line.len) {
+        if (i >= line.len) {
             break;
         }
         const char = line[i];
@@ -594,18 +804,18 @@ fn convertToInt(line: []const u8) u512 {
     return result;
 }
 
-fn findParents(scales: []u512, childIndex:usize) ?[2]u32 {
+fn findParents(scales: []u512, childIndex: usize) ?[2]u32 {
     const child = scales[childIndex];
-    for(0..scales.len) |j| {
-        if(j == childIndex) {
+    for (0..scales.len) |j| {
+        if (j == childIndex) {
             continue;
         }
-        for(j+1..scales.len) |k| {
-            if(k == childIndex) {
+        for (j + 1..scales.len) |k| {
+            if (k == childIndex) {
                 continue;
             }
-            if(isParents(child, scales[j], scales[k])) {
-                return [2]u32 {@intCast(j+1), @intCast(k+1)};
+            if (isParents(child, scales[j], scales[k])) {
+                return [2]u32{ @intCast(j + 1), @intCast(k + 1) };
             }
         }
     }
@@ -614,15 +824,15 @@ fn findParents(scales: []u512, childIndex:usize) ?[2]u32 {
 
 fn findParentsAndSimilarity(scales: []u512, childIndex: usize) ?u32 {
     const child = scales[childIndex];
-    for(0..scales.len) |j| {
-        if(j == childIndex) {
+    for (0..scales.len) |j| {
+        if (j == childIndex) {
             continue;
         }
-        for(j+1..scales.len) |k| {
-            if(k == childIndex) {
+        for (j + 1..scales.len) |k| {
+            if (k == childIndex) {
                 continue;
             }
-            if(findSimilarity(child, scales[j], scales[k])) |result| {
+            if (findSimilarity(child, scales[j], scales[k])) |result| {
                 return result;
             }
         }
@@ -630,8 +840,8 @@ fn findParentsAndSimilarity(scales: []u512, childIndex: usize) ?u32 {
     return null;
 }
 
-fn findSimilarity(c: u512, p1: u512, p2: u512) ?u32{
-    if(!isParents(c, p1, p2)) {
+fn findSimilarity(c: u512, p1: u512, p2: u512) ?u32 {
+    if (!isParents(c, p1, p2)) {
         return null;
     }
 
@@ -692,6 +902,13 @@ fn isStrValid(string: []u8, multimap: *utils.Multimap(u8, u8)) bool {
     return true;
 }
 
+const State = packed struct {
+    sheep: u49, // This supports a 7x7 grid maximum. Top left corner is rightmost bit. Bottom right is leftmost.
+    dragon: u7, // Supports 64 squares. More than needed
+    dragonTurn: bool,
+    _: u7 = 0,
+};
+
 const Count = struct {
     a: u32,
     b: u32,
@@ -703,12 +920,6 @@ const Thread = struct {
     b: u32,
 };
 
-const Tile = enum {
-    EMPTY,
-    SHEEP
-};
+const Tile = enum { EMPTY, SHEEP };
 
-const Coord = struct {
-    x: i32,
-    y: i32
-};
+const Coord = struct { x: i32, y: i32 };
