@@ -678,7 +678,7 @@ fn getNextStates(state: State, hideouts: u49, dimX: i32, dimY: i32, allocator: A
     } else {
         var sheepCopy = state.sheep;
         var hideoutsCopy = hideouts;
-        hideoutsCopy >>= @as(u6, @intCast(dimX)); // skip one row so now it corresponds to where the sheep will move
+        const dimXCast: u6 = @intCast(dimX);
         var allWaitingForDragon = true;
         for (0..49) |i| {
             const bit: u6 = @intCast(i);
@@ -686,8 +686,10 @@ fn getNextStates(state: State, hideouts: u49, dimX: i32, dimY: i32, allocator: A
             if (sheepCopy & 1 == 1) {
                 const x = @mod(bitSigned, dimX);
                 const y = @divFloor(bitSigned, dimX);
-                const nextSheep = state.sheep - (@as(u49, 1) << bit) + (@as(u49, 1) << (bit + @as(u6, @intCast(dimX))));
-                if (((c.x != x or c.y != y + 1) or hideoutsCopy & 1 == 1) and y + 1 < dimY) { // need to check hideouts correctly
+                const oldSheep = @as(u49, 1) << bit;
+                const newSheep = @as(u49, 1) << (bit + dimXCast);
+                const nextSheep = state.sheep - oldSheep + newSheep;
+                if (((c.x != x or c.y != y + 1) or (hideoutsCopy >> dimXCast) & 1 == 1) and y + 1 < dimY) {
                     try list.append(allocator, .{ .sheep = nextSheep, .dragon = state.dragon, .dragonTurn = true });
                 } else if (y + 1 >= dimY) {
                     allWaitingForDragon = false;
