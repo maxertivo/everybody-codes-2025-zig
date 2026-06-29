@@ -1,7 +1,7 @@
 const std = @import("std");
 const part1 = @import("day1to5.zig");
 const part2 = @import("day6to10.zig");
-// const part3 = @import("day13to18.zig");
+const part3 = @import("day11to15.zig");
 // const part4 = @import("day19to25.zig");
 const utils = @import("utils.zig");
 const Reader = std.Io.Reader;
@@ -46,8 +46,8 @@ pub fn main(init: std.process.Init) !void {
     const result10 = try solveDay([3]u64, "src/inputs/day10.txt", io, allocator, part2.day10);
     println(io, "Day 10: {any}", .{result10});
 
-    // const result11 = try part2.day11(allocator);
-    // println("Day 11: {{ {{{d},{d}}}, {{{d},{d},{d}}} }}", .{result11[0], result11[1], result11[2], result11[3], result11[4]});
+    const result11 = try solveDay([3]u64, "src/inputs/day11.txt", io, allocator, part3.day11);
+    println(io, "Day 11: {any}", .{result11});
 
     // const result12 = try part2.day12(allocator);
     // println("Day 12: {any}", .{result12});
