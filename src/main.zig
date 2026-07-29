@@ -49,8 +49,8 @@ pub fn main(init: std.process.Init) !void {
     const result11 = try solveDay([3]u64, "src/inputs/day11.txt", io, allocator, part3.day11);
     println(io, "Day 11: {any}", .{result11});
 
-    // const result12 = try part2.day12(allocator);
-    // println("Day 12: {any}", .{result12});
+    const result12 = try solveDay([3]u64, "src/inputs/day12.txt", io, allocator, part3.day12);
+    println(io, "Day 12: {any}", .{result12});
 
     // const result13 = try part3.day13(allocator);
     // println("Day 13: {{ {{{d},{d}}}, {{{d},{d}}} }}", .{result13[0], result13[1], result13[2], result13[3]});
