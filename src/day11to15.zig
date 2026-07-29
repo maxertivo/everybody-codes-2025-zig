@@ -22,6 +22,7 @@ pub fn day11(allocator: Allocator, reader: *Reader) ![3]u64 {
 }
 
 pub fn day12(allocator: Allocator, reader: *Reader) ![3]u64 {
+    const empty = std.AutoHashMap(UCoord, void).init(allocator);
     var grid: [210][210]u8 = @splat(@splat(0));
     var y1: usize = 0;
     var xDim: usize = 0;
@@ -41,7 +42,7 @@ pub fn day12(allocator: Allocator, reader: *Reader) ![3]u64 {
     var queue = std.Deque(UCoord).empty;
     try queue.pushFront(allocator, .{.x = 0, .y = 0});
     try burned.put(.{.x = 0, .y = 0}, void{});
-    const result1 = try igniteBarrels(&grid, &queue, &burned, xDim, yDim, allocator);
+    const result1 = try igniteBarrels(&grid, &queue, &burned, &empty, xDim, yDim, allocator);
 
     y1 = 0;
     while(readLine(reader)) |line| {
@@ -61,7 +62,7 @@ pub fn day12(allocator: Allocator, reader: *Reader) ![3]u64 {
     try queue.pushFront(allocator, .{.x = xDim - 1, .y = yDim - 1});
     try burned.put(.{.x = 0, .y = 0}, void{});
     try burned.put(.{.x = xDim - 1, .y = yDim - 1}, void{});
-    const result2 = try igniteBarrels(&grid, &queue, &burned, xDim, yDim, allocator);
+    const result2 = try igniteBarrels(&grid, &queue, &burned, &empty, xDim, yDim, allocator);
 
     y1 = 0;
     while(readLine(reader)) |line| {
@@ -86,6 +87,8 @@ pub fn day12(allocator: Allocator, reader: *Reader) ![3]u64 {
 fn find3Best(grid: *[210][210]u8, xDim: usize, yDim: usize, allocator: Allocator) !u32 {
     var result = std.AutoHashMap(UCoord, void).init(allocator);
     var currentCheckedBarrels = std.AutoHashMap(UCoord, void).init(allocator);
+    var tempStorage = std.AutoHashMap(UCoord, void).init(allocator);
+    const empty = std.AutoHashMap(UCoord, void).init(allocator);
     var queue = std.Deque(UCoord).empty;
 
     for(0..3) |_| {
@@ -96,9 +99,9 @@ fn find3Best(grid: *[210][210]u8, xDim: usize, yDim: usize, allocator: Allocator
                 const coord = UCoord{.x = x, .y = y};
                 if(grid[coord.x][coord.y] > 3 and !currentCheckedBarrels.contains(coord)) {
                     try queue.pushFront(allocator, coord);
-                    var tempStorage = try result.clone();
+                    tempStorage.clearRetainingCapacity();
                     try tempStorage.put(coord, void{});
-                    const burned = try igniteBarrels(grid, &queue, &tempStorage, xDim, yDim, allocator);
+                    const burned = try igniteBarrels(grid, &queue, &tempStorage, &result, xDim, yDim, allocator);
                     if(burned > maxBurned) {
                         maxBurned = burned;
                         maxCoord = coord;
@@ -110,8 +113,7 @@ fn find3Best(grid: *[210][210]u8, xDim: usize, yDim: usize, allocator: Allocator
         // Add all burned barrels to result set
         try queue.pushFront(allocator, maxCoord);
         try result.put(maxCoord, void{});
-        const total = try igniteBarrels(grid, &queue, &result, xDim, yDim, allocator);
-        std.debug.print("{d} {} {d}\n", .{total, maxCoord, grid[maxCoord.x][maxCoord.y]});
+        _ = try igniteBarrels(grid, &queue, &result, &empty, xDim, yDim, allocator);
 
         // Never check barrels in the result set again
         currentCheckedBarrels.clearRetainingCapacity();
@@ -132,32 +134,32 @@ fn putAll(source: *std.AutoHashMap(UCoord, void), target: *std.AutoHashMap(UCoor
     }
 }
 
-fn igniteBarrels(grid: *[210][210]u8, queue: *std.Deque(UCoord), burned: *std.AutoHashMap(UCoord, void), xDim: usize, yDim: usize, allocator: Allocator) !u32 {
+fn igniteBarrels(grid: *[210][210]u8, queue: *std.Deque(UCoord), burned: *std.AutoHashMap(UCoord, void), barrelsToIgnore: *const std.AutoHashMap(UCoord, void), xDim: usize, yDim: usize, allocator: Allocator) !u32 {
     while(queue.popBack()) |coord| {
         if(coord.y > 0 and grid[coord.x][coord.y-1] <= grid[coord.x][coord.y]) {
             const new = UCoord{.x = coord.x, .y = coord.y - 1};
-            if(!burned.contains(new)) {
+            if(!burned.contains(new) and !barrelsToIgnore.contains(new)) {
                 try burned.put(new, void{});
                 try queue.pushFront(allocator, new);
             }
         }
         if(coord.y < yDim - 1 and grid[coord.x][coord.y+1] <= grid[coord.x][coord.y]) {
             const new = UCoord{.x = coord.x, .y = coord.y + 1};
-            if(!burned.contains(new)) {
+            if(!burned.contains(new) and !barrelsToIgnore.contains(new)) {
                 try burned.put(new, void{});
                 try queue.pushFront(allocator, new);
             }
         }
         if(coord.x > 0 and grid[coord.x-1][coord.y] <= grid[coord.x][coord.y]) {
             const new = UCoord{.x = coord.x - 1, .y = coord.y};
-            if(!burned.contains(new)) {
+            if(!burned.contains(new) and !barrelsToIgnore.contains(new)) {
                 try burned.put(new, void{});
                 try queue.pushFront(allocator, new);
             }
         }
         if(coord.x < xDim - 1 and grid[coord.x+1][coord.y] <= grid[coord.x][coord.y]) {
             const new = UCoord{.x = coord.x + 1, .y = coord.y};
-            if(!burned.contains(new)) {
+            if(!burned.contains(new) and !barrelsToIgnore.contains(new)) {
                 try burned.put(new, void{});
                 try queue.pushFront(allocator, new);
             }
