@@ -84,6 +84,93 @@ pub fn day12(allocator: Allocator, reader: *Reader) ![3]u64 {
     return [3]u64{result1, result2, result3};
 }
 
+pub fn day13(allocator: Allocator, reader: *Reader) ![3]u64 {
+    var list1 = std.ArrayList(u32).empty;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            break;
+        }
+        try list1.append(allocator, try std.fmt.parseInt(u32, line, 10));
+    }
+
+    var wheel: []u32 = try allocator.alloc(u32, list1.items.len + 1);
+    @memset(wheel, 0);
+    wheel[0] = 1;
+    var reverseIndex: usize = list1.items.len;
+    var forwardIndex: usize = 1;
+    for(list1.items, 0..) |item, i| {
+        if(i % 2 == 0) {
+            wheel[forwardIndex] = item;
+            forwardIndex += 1;
+        } else {
+            wheel[reverseIndex] = item;
+            reverseIndex -= 1;
+        }
+    }
+    const result1: u64 = wheel[2025 % wheel.len];
+
+    var list2 = try parseList(allocator, reader);
+
+    const result2 = try turnWheel(&list2, allocator, 20252025);
+
+    var list3 = try parseList(allocator, reader);
+    const result3 = try turnWheel(&list3, allocator, 202520252025);
+
+    return [3]u64{result1,result2,result3};
+}
+
+fn parseList(allocator: Allocator, reader: *Reader) !std.ArrayList(Range) {
+    var list = std.ArrayList(Range).empty;
+    var asc = true;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            break;
+        }
+        var it = std.mem.tokenizeScalar(u8, line, '-');
+        const start = try std.fmt.parseInt(u32, it.next().?, 10);
+        const end = try std.fmt.parseInt(u32, it.next().?, 10);
+        if(asc) {
+            try list.append(allocator, .{.start = start, .end = end, .asc = asc});
+        } else {
+            try list.append(allocator, .{.start = end, .end = start, .asc = asc});
+        }
+        asc = !asc;
+    }
+    return list;
+}
+
+fn turnWheel(list: *std.ArrayList(Range), allocator: Allocator, units: u64) !u64 {
+    var wheel2 = try allocator.alloc(Range, list.items.len + 1);
+    @memset(wheel2, .{.start = 0, .end = 0, .asc = false});
+    wheel2[0] = .{.start = 1, .end = 1, .asc = true};
+    var reverseIndex: usize = list.items.len;
+    var forwardIndex: usize = 1;
+    for(list.items, 0..) |item, i| {
+        if(i % 2 == 0) {
+            wheel2[forwardIndex] = item;
+            forwardIndex += 1;
+        } else {
+            wheel2[reverseIndex] = item;
+            reverseIndex -= 1;
+        }
+    }
+    var totalLen: u64 = 0;
+    for(wheel2) |item| {
+        totalLen += item.size();
+    }
+    var remainder:u64 = units % totalLen;
+    for(wheel2) |item| {
+        if(item.size() <= remainder) {
+            remainder -= item.size();
+        } else if (item.asc) {
+            return item.start + remainder;
+        } else {
+            return item.start - remainder;
+        }
+    }
+    unreachable;
+}
+
 fn find3Best(grid: *[210][210]u8, xDim: usize, yDim: usize, allocator: Allocator) !u32 {
     var result = std.AutoHashMap(UCoord, void).init(allocator);
     var currentCheckedBarrels = std.AutoHashMap(UCoord, void).init(allocator);
@@ -244,4 +331,18 @@ fn checksum(columns: *std.ArrayList(u64)) u64 {
 const UCoord = struct {
     x: usize,
     y: usize,
+};
+
+const Range = struct {
+    start: u32,
+    end: u32,
+    asc: bool,
+
+    fn size(self: *const Range) u32 {
+        if(self.asc) {
+            return self.end - self.start + 1;
+        } else {
+            return self.start - self.end + 1;
+        }
+    }
 };
