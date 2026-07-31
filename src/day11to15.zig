@@ -140,26 +140,26 @@ fn parseList(allocator: Allocator, reader: *Reader) !std.ArrayList(Range) {
 }
 
 fn turnWheel(list: *std.ArrayList(Range), allocator: Allocator, units: u64) !u64 {
-    var wheel2 = try allocator.alloc(Range, list.items.len + 1);
-    @memset(wheel2, .{.start = 0, .end = 0, .asc = false});
-    wheel2[0] = .{.start = 1, .end = 1, .asc = true};
+    var wheel = try allocator.alloc(Range, list.items.len + 1);
+    @memset(wheel, .{.start = 0, .end = 0, .asc = false});
+    wheel[0] = .{.start = 1, .end = 1, .asc = true};
     var reverseIndex: usize = list.items.len;
     var forwardIndex: usize = 1;
     for(list.items, 0..) |item, i| {
         if(i % 2 == 0) {
-            wheel2[forwardIndex] = item;
+            wheel[forwardIndex] = item;
             forwardIndex += 1;
         } else {
-            wheel2[reverseIndex] = item;
+            wheel[reverseIndex] = item;
             reverseIndex -= 1;
         }
     }
     var totalLen: u64 = 0;
-    for(wheel2) |item| {
+    for(wheel) |item| {
         totalLen += item.size();
     }
     var remainder:u64 = units % totalLen;
-    for(wheel2) |item| {
+    for(wheel) |item| {
         if(item.size() <= remainder) {
             remainder -= item.size();
         } else if (item.asc) {
