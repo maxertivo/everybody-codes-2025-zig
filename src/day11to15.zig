@@ -119,6 +119,167 @@ pub fn day13(allocator: Allocator, reader: *Reader) ![3]u64 {
     return [3]u64{result1,result2,result3};
 }
 
+pub fn day14(allocator: Allocator, reader: *Reader) ![3]u64 {
+    var bitSet, const rowLen, const total = try parseTiles(allocator, reader);
+
+    var storage = try std.bit_set.DynamicBitSet.initEmpty(allocator, total);
+    var result1: u64 = 0;
+    for(0..5) |_| {
+        try performRound(std.bit_set.DynamicBitSet, &bitSet, &storage, rowLen);
+        result1 += storage.count();
+        try performRound(std.bit_set.DynamicBitSet, &storage, &bitSet, rowLen);
+        result1 += bitSet.count();
+    }
+
+    var bitSet2, const rowLen2, const total2 = try parseTiles(allocator, reader);
+
+    var storage2 = try std.bit_set.DynamicBitSet.initEmpty(allocator, total2);
+    var result2: u64 = 0;
+    for(0..1012) |_| {
+        try performRound(std.bit_set.DynamicBitSet, &bitSet2, &storage2, rowLen2);
+        result2 += storage2.count();
+        try performRound(std.bit_set.DynamicBitSet, &storage2, &bitSet2, rowLen2);
+        result2 += bitSet2.count();
+    }
+    try performRound(std.bit_set.DynamicBitSet, &bitSet2, &storage2, rowLen2);
+    result2 += storage2.count();
+
+    const pattern, _, _ = try parseTiles(allocator, reader);
+
+    var bitSet3 = std.bit_set.IntegerBitSet(1156).empty;
+    var storage3 = std.bit_set.IntegerBitSet(1156).empty;
+    var seen = std.AutoHashMap(u1156, usize).init(allocator);
+    var pointValuesByIndex = std.AutoHashMap(usize, u64).init(allocator);
+    var cycleLength: usize = 0;
+    var cycleEnd: usize = 0;
+    var result3: u64 = 0;
+    for(0..100000000) |i| {
+        try performRound(std.bit_set.IntegerBitSet(1156), &bitSet3, &storage3, 34);
+        if(containsPattern(&storage3, &pattern)) {
+            const count = storage3.count();
+            try pointValuesByIndex.put(2*i + 1, count);
+        }
+
+        if(seen.get(storage3.mask)) |seenIndex| {
+            cycleEnd = 2*i + 1;
+            cycleLength = cycleEnd - seenIndex;
+            break;
+        }
+        try seen.put(storage3.mask, 2*i + 1);
+        try performRound(std.bit_set.IntegerBitSet(1156), &storage3, &bitSet3, 34);
+        if(containsPattern(&bitSet3, &pattern)) {
+            const count = bitSet3.count();
+            try pointValuesByIndex.put(2*i + 2, count);
+        }
+        if(seen.get(bitSet3.mask)) |seenIndex| {
+            cycleEnd = 2*i + 2;
+            cycleLength = cycleEnd - seenIndex;
+            break;
+        }
+        try seen.put(bitSet3.mask, 2*i + 2);
+    }
+    const numCycles: usize = 1000000000;
+    const cycleStart: usize = cycleEnd - cycleLength;
+    const fullCycles: usize = (numCycles - cycleStart) / cycleLength;
+    const remainingRounds: usize = @mod(numCycles - cycleStart, cycleLength);
+
+    // Add points during cycle
+    for(cycleStart..cycleStart + cycleLength) |i| {
+        if(pointValuesByIndex.get(i)) |pointValue| {
+            result3 += pointValue;
+        }
+    }
+    result3 *= @intCast(fullCycles);
+
+    // Add points before cycle
+    for(0..cycleStart) |i| {
+        if(pointValuesByIndex.get(i)) |pointValue| {
+            result3 += pointValue;
+        }
+    }
+
+    // Add partial cycle at the end
+    for(cycleStart..cycleStart + remainingRounds) |i| {
+        if(pointValuesByIndex.get(i)) |pointValue| {
+            result3 += pointValue;
+        }
+    }
+
+    return [3]u64{result1, result2, result3};
+}
+
+fn containsPattern(tiles: *const std.bit_set.IntegerBitSet(1156), pattern: *const std.bit_set.DynamicBitSet) bool {
+    return tiles.isSet(455) == pattern.isSet(0)
+        and tiles.isSet(456) == pattern.isSet(1)
+        and tiles.isSet(457) == pattern.isSet(2)
+        and tiles.isSet(458) == pattern.isSet(3)
+        and tiles.isSet(489) == pattern.isSet(8)
+        and tiles.isSet(490) == pattern.isSet(9)
+        and tiles.isSet(491) == pattern.isSet(10)
+        and tiles.isSet(492) == pattern.isSet(11)
+        and tiles.isSet(523) == pattern.isSet(16)
+        and tiles.isSet(524) == pattern.isSet(17)
+        and tiles.isSet(525) == pattern.isSet(18)
+        and tiles.isSet(526) == pattern.isSet(19)
+        and tiles.isSet(557) == pattern.isSet(24)
+        and tiles.isSet(558) == pattern.isSet(25)
+        and tiles.isSet(559) == pattern.isSet(26)
+        and tiles.isSet(560) == pattern.isSet(27);
+}
+
+fn parseTiles(allocator: Allocator, reader: *Reader) !struct{std.bit_set.DynamicBitSet, usize, usize} {
+    var list = std.ArrayList([]u8).empty;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            break;
+        }
+        try list.append(allocator, try allocator.dupe(u8, line));
+    }
+    const rowLen: usize = list.items[0].len;
+    const total: usize = list.items.len * rowLen;
+    var bitSet = try std.bit_set.DynamicBitSet.initEmpty(allocator, total);
+    for(list.items, 0..) |item, i| {
+        for(item, 0..) |char, j| {
+            if(char == '#') {
+                bitSet.set(rowLen * i + j);
+            }
+        }
+    }
+    return .{bitSet, rowLen, total};
+}
+
+fn performRound(comptime T: type, src: *T, dest: *T, rowLen: usize) !void {
+    for(0..src.capacity()) |index| {
+        var count: u8 = 0;
+        if(index % rowLen > 0 and index >= rowLen + 1 and src.isSet(index - 1 - rowLen)) {
+            count += 1;
+        }
+        if(index % rowLen < rowLen - 1 and index >= rowLen - 1 and src.isSet(index + 1 - rowLen)) {
+            count += 1;
+        }
+        if(index % rowLen > 0 and index + rowLen - 1 < src.capacity() and src.isSet(index + rowLen - 1)) {
+            count += 1;
+        }
+        if(index % rowLen < rowLen - 1 and index + rowLen + 1 < src.capacity() and src.isSet(index + rowLen + 1)) {
+            count += 1;
+        }
+        //std.debug.print("index: {d} count: {d}\n",.{index, count});
+        if(src.isSet(index)) {
+            if(count % 2 == 1) {
+                dest.set(index);
+            } else {
+                dest.unset(index);
+            }
+        } else {
+            if(count % 2 == 1) {
+                dest.unset(index);
+            } else {
+                dest.set(index);
+            }
+        }
+    }
+}
+
 fn parseList(allocator: Allocator, reader: *Reader) !std.ArrayList(Range) {
     var list = std.ArrayList(Range).empty;
     var asc = true;
