@@ -208,6 +208,241 @@ pub fn day14(allocator: Allocator, reader: *Reader) ![3]u64 {
     return [3]u64{result1, result2, result3};
 }
 
+pub fn day15(allocator: Allocator, reader: *Reader) ![3]u64 {
+    const instructions = try parseInstructions(allocator, reader);
+
+    const walls, const end = try getWalls(instructions, allocator);
+    const context = AStarContext{.walls = &walls, .start = .{.x = 0, .y = 0}, .end = end};
+    const initialState = Coord{.x = 0, .y = 0};
+    const cost1 = utils.aStarAuto(Coord, u32, AStarContext, nextStateFn, transitionCostFn, estimateFn, isSolutionFn, initialState, context, allocator).?;
+
+    _ = readLine(reader);
+    const instructions2 = try parseInstructions(allocator, reader);
+    const context2 = try getContext(instructions2, allocator);
+    const cost2 = utils.aStarAuto(Coord, u32, AStarContext2, nextStateFn2, transitionCostFn2, estimateFn2, isSolutionFn2, initialState, context2, allocator).?;
+
+    _ = readLine(reader);
+    const instructions3 = try parseInstructions(allocator, reader);
+    const context3 = try getContext(instructions3, allocator);
+    const cost3 = utils.aStarAuto(Coord, u32, AStarContext2, nextStateFn2, transitionCostFn2, estimateFn2, isSolutionFn2, initialState, context3, allocator).?;
+    return [3]u64{cost1, cost2, cost3};
+}
+
+fn getContext(instructions: std.ArrayList(Instruction), allocator: Allocator) !AStarContext2 {
+    var segments = try allocator.create(std.ArrayList(LineSegment));
+    segments.* = std.ArrayList(LineSegment).empty;
+    var xCoords = std.AutoHashMap(i32, void).init(allocator);
+    var yCoords = std.AutoHashMap(i32, void).init(allocator);
+
+    var dir = Direction.U;
+    var coord = Coord{.x = 0, .y = 0};
+
+    // Construct the wall segments and create a list of x and y coordinates that may need to be visited
+    // The key insight here is that we only care about x and y coordinates that are:
+    // 1. At the tips of walls (so we can go around them)
+    // 2. Next to the sides of walls (so we will be able to run all the way up to them)
+    for(instructions.items, 0..) |instruction, i| {
+        const oldDir = dir;
+        dir = dir.changeDirection(instruction.dir);
+
+        // The original starting coord is not part of a wall segment, so shift one unit
+        const start = if(i == 0) coord.moveDir(dir) else coord;
+        // The final ending coord is not part of a wall segment, so shift one unit
+        const end = coord.moveDirAmount(dir, if (i == instructions.items.len - 1) instruction.steps - 1 else instruction.steps);
+
+        // Add the x and y coords one unit away from the wall
+        if(dir == Direction.L or dir == Direction.R) {
+            try xCoords.put(end.moveDir(dir).x, void{});
+            try xCoords.put(start.moveDir(dir.getOpposite()).x, void{});
+            try yCoords.put(start.moveDir(oldDir).y, void{});
+            try yCoords.put(start.moveDir(oldDir.getOpposite()).y, void{});
+        } else {
+            try yCoords.put(end.moveDir(dir).y, void{});
+            try yCoords.put(start.moveDir(dir.getOpposite()).y, void{});
+            try xCoords.put(start.moveDir(oldDir).x, void{});
+            try xCoords.put(start.moveDir(oldDir).x, void{});
+        }
+        try segments.append(allocator, .{.start = start, .end = end});
+        coord = end;
+        if(i == instructions.items.len - 1) {
+            // 'end' was shifted to avoid it being the destination. This undoes that shift so coord is the destination.
+            coord = coord.moveDir(dir);
+        }
+    }
+
+    // The start and end position must be valid x and y coordinates (so we can travel to / from them)
+    try xCoords.put(0, void{});
+    try xCoords.put(coord.x, void{});
+    try yCoords.put(0, void{});
+    try yCoords.put(coord.y, void{});
+
+    var xCoordList = try allocator.create(std.ArrayList(i32));
+    xCoordList.* = std.ArrayList(i32).empty;
+    var it = xCoords.keyIterator();
+    while(it.next()) |x| {
+        try xCoordList.append(allocator, x.*);
+    }
+    var yCoordList = try allocator.create(std.ArrayList(i32));
+    yCoordList.* = std.ArrayList(i32).empty;
+    it = yCoords.keyIterator();
+    while(it.next()) |y| {
+        try yCoordList.append(allocator, y.*);
+    }
+    std.mem.sort(i32, xCoordList.items, void{}, std.sort.asc(i32));
+    std.mem.sort(i32, yCoordList.items, void{}, std.sort.asc(i32));
+    return .{.segments = segments, .sortedXCoords = xCoordList, .sortedYCoords = yCoordList, .start = .{.x = 0, .y = 0}, .end = coord};
+}
+
+// Returns a Set of wall coordinates, and the destination coordinate
+fn getWalls(instructions: std.ArrayList(Instruction), allocator: Allocator) !struct{std.AutoHashMap(Coord, void), Coord} {
+    var walls = std.AutoHashMap(Coord, void).init(allocator);
+    var dir = Direction.U;
+    var coord = Coord{.x = 0, .y = 0};
+    for(instructions.items) |instruction| {
+        dir = dir.changeDirection(instruction.dir);
+        for(0..instruction.steps) |_| {
+            coord = coord.moveDir(dir);
+            try walls.put(coord, void{});
+        }
+    }
+    _ = walls.remove(coord);
+    return .{walls, coord};
+}
+
+// Takes one step in each direction
+fn nextStateFn(context: AStarContext, coord: Coord, allocator: Allocator) std.ArrayList(Coord) {
+    var list = std.ArrayList(Coord).empty;
+    const left = Coord{.x = coord.x - 1, .y = coord.y};
+    const right = Coord{.x = coord.x + 1, .y = coord.y};
+    const up = Coord{.x = coord.x, .y = coord.y + 1};
+    const down = Coord{.x = coord.x, .y = coord.y - 1};
+    if(!context.walls.contains(left)) {
+        list.append(allocator, left) catch unreachable;
+    }
+    if(!context.walls.contains(right)) {
+        list.append(allocator, right) catch unreachable;
+    }
+    if(!context.walls.contains(up)) {
+        list.append(allocator, up) catch unreachable;
+    }
+    if(!context.walls.contains(down)) {
+        list.append(allocator, down) catch unreachable;
+    }
+    return list;
+}
+
+// Go to neighboring x and y coordinates in the lists of valid coordinates.
+// This allows the next state to be a large distance away, which is more efficient for mazes with long walls.
+fn nextStateFn2(context: AStarContext2, coord: Coord, allocator: Allocator) std.ArrayList(Coord) {
+    var list = std.ArrayList(Coord).empty;
+    const xIndex = std.sort.binarySearch(i32, context.sortedXCoords.items, coord.x, compare).?;
+    const xLower = if(xIndex > 0) context.sortedXCoords.items[xIndex - 1] else null;
+    const xHigher = if(xIndex < context.sortedXCoords.items.len - 1) context.sortedXCoords.items[xIndex + 1] else null;
+    const yIndex = std.sort.binarySearch(i32, context.sortedYCoords.items, coord.y, compare).?;
+    const yLower = if(yIndex > 0) context.sortedYCoords.items[yIndex - 1] else null;
+    const yHigher = if(yIndex < context.sortedYCoords.items.len - 1) context.sortedYCoords.items[yIndex + 1] else null;
+    const left = if(xLower) |x| LineSegment{.start = coord, .end = Coord{.x = x, .y = coord.y}} else null;
+    const right = if(xHigher) |x| LineSegment{.start = coord, .end = Coord{.x = x, .y = coord.y}} else null;
+    const down = if(yLower) |y| LineSegment{.start = coord, .end = Coord{.x = coord.x, .y = y}} else null;
+    const up = if(yHigher) |y| LineSegment{.start = coord, .end = Coord{.x = coord.x, .y = y}} else null;
+    if(left != null and !intersectsAny(left.?, context.segments.items)) {
+        list.append(allocator, left.?.end) catch unreachable;
+    }
+    if(right != null and !intersectsAny(right.?, context.segments.items)) {
+        list.append(allocator, right.?.end) catch unreachable;
+    }
+    if(down != null and !intersectsAny(down.?, context.segments.items)) {
+        list.append(allocator, down.?.end) catch unreachable;
+    }
+    if(up != null and !intersectsAny(up.?, context.segments.items)) {
+        list.append(allocator, up.?.end) catch unreachable;
+    }
+    return list;
+}
+
+fn transitionCostFn(_: AStarContext, _: Coord, _: Coord) u32 {
+    return 1;
+}
+
+fn transitionCostFn2(_: AStarContext2, a: Coord, b: Coord) u32 {
+    return @abs(a.x - b.x) + @abs(a.y - b.y);
+}
+
+fn estimateFn(context: AStarContext, coord: Coord) u32 {
+    return @abs(context.end.x - coord.x) + @abs(context.end.y - coord.y);
+}
+
+fn estimateFn2(context: AStarContext2, coord: Coord) u32 {
+    return @abs(context.end.x - coord.x) + @abs(context.end.y - coord.y);
+}
+
+fn isSolutionFn(context: AStarContext, coord: Coord) bool {
+    return coord.x == context.end.x and coord.y == context.end.y;
+}
+
+fn isSolutionFn2(context: AStarContext2, coord: Coord) bool {
+    return coord.x == context.end.x and coord.y == context.end.y;
+}
+
+fn compare(context: i32, item: i32) std.math.Order {
+    return std.math.order(context, item);
+}
+
+fn parseInstructions(allocator: Allocator, reader: *Reader) !std.ArrayList(Instruction) {
+    const line = readLine(reader).?;
+    var instructions = std.ArrayList(Instruction).empty;
+    var it = std.mem.tokenizeScalar(u8, line, ',');
+    while(it.next()) |next| {
+        const dir = if(next[0] == 'L') DirectionChange.L else DirectionChange.R;
+        const steps: u32 = try std.fmt.parseInt(u32, next[1..], 10);
+        try instructions.append(allocator, .{.dir = dir, .steps = steps});
+    }
+    return instructions;
+}
+
+fn intersectsAny(line: LineSegment, list: []const LineSegment) bool {
+    for(list) |item| {
+        if(intersects(line, item)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+fn intersects(line1: LineSegment, line2: LineSegment) bool {
+    if (line1.start.x == line1.end.x and line2.start.x == line2.end.x) {
+        if (line1.start.x != line2.start.x) {
+            return false;
+        }
+        const lowest1 = @min(line1.start.y, line1.end.y);
+        const lowest2 = @min(line2.start.y, line2.end.y);
+        const highest1 = @max(line1.start.y, line1.end.y);
+        const highest2 = @max(line2.start.y, line2.end.y);
+        const start = @max(lowest1, lowest2);
+        const end = @min(highest1, highest2);
+        return start <= end;
+    } else if (line1.start.y == line1.end.y and line2.start.y == line2.end.y) {
+        if (line1.start.y != line2.start.y) {
+            return false;
+        }
+        const lowest1 = @min(line1.start.x, line1.end.x);
+        const lowest2 = @min(line2.start.x, line2.end.x);
+        const highest1 = @max(line1.start.x, line1.end.x);
+        const highest2 = @max(line2.start.x, line2.end.x);
+        const start = @max(lowest1, lowest2);
+        const end = @min(highest1, highest2);
+        return start <= end;
+    } else {
+        const verticalLine = if (line1.start.x == line1.end.x) line1 else line2;
+        const horizontalLine = if (line1.start.x == line1.end.x) line2 else line1;
+        const x = verticalLine.start.x;
+        const y = horizontalLine.start.y;
+        const validX = (x <= horizontalLine.start.x and x >= horizontalLine.end.x) or (x <= horizontalLine.end.x and x >= horizontalLine.start.x);
+        const validY = (y <= verticalLine.start.y and y >= verticalLine.end.y) or (y <= verticalLine.end.y and y >= verticalLine.start.y);
+        return validX and validY;
+    }
+}
+
 fn containsPattern(tiles: *const std.bit_set.IntegerBitSet(1156), pattern: *const std.bit_set.DynamicBitSet) bool {
     return tiles.isSet(455) == pattern.isSet(0)
         and tiles.isSet(456) == pattern.isSet(1)
@@ -263,7 +498,6 @@ fn performRound(comptime T: type, src: *T, dest: *T, rowLen: usize) !void {
         if(index % rowLen < rowLen - 1 and index + rowLen + 1 < src.capacity() and src.isSet(index + rowLen + 1)) {
             count += 1;
         }
-        //std.debug.print("index: {d} count: {d}\n",.{index, count});
         if(src.isSet(index)) {
             if(count % 2 == 1) {
                 dest.set(index);
@@ -494,6 +728,29 @@ const UCoord = struct {
     y: usize,
 };
 
+const Coord = struct {
+    x: i32,
+    y: i32,
+
+    fn moveDir(coord: Coord, dir: Direction) Coord {
+        return switch(dir) {
+            Direction.U => .{.x = coord.x, .y = coord.y + 1},
+            Direction.R => .{.x = coord.x + 1, .y = coord.y},
+            Direction.D => .{.x = coord.x, .y = coord.y - 1},
+            Direction.L => .{.x = coord.x - 1, .y = coord.y},
+        };
+    }
+
+    fn moveDirAmount(coord: Coord, dir: Direction, steps: u32) Coord {
+        return switch(dir) {
+            Direction.U => .{.x = coord.x, .y = coord.y + @as(i32, @intCast(steps))},
+            Direction.R => .{.x = coord.x + @as(i32, @intCast(steps)), .y = coord.y},
+            Direction.D => .{.x = coord.x, .y = coord.y - @as(i32, @intCast(steps))},
+            Direction.L => .{.x = coord.x - @as(i32, @intCast(steps)), .y = coord.y},
+        };
+    }
+};
+
 const Range = struct {
     start: u32,
     end: u32,
@@ -506,4 +763,58 @@ const Range = struct {
             return self.start - self.end + 1;
         }
     }
+};
+
+const DirectionChange = enum {
+    L,
+    R,
+};
+
+const Direction = enum {
+    U,
+    D,
+    L,
+    R,
+
+    fn changeDirection(cur: Direction, change: DirectionChange) Direction {
+        return switch(cur) {
+            Direction.U => if(change == DirectionChange.L) Direction.L else Direction.R,
+            Direction.R => if(change == DirectionChange.L) Direction.U else Direction.D,
+            Direction.D => if(change == DirectionChange.L) Direction.R else Direction.L,
+            Direction.L => if(change == DirectionChange.L) Direction.D else Direction.U,
+        };
+    }
+
+    fn getOpposite(dir: Direction) Direction {
+        return switch(dir) {
+            Direction.U => Direction.D,
+            Direction.R => Direction.L,
+            Direction.D => Direction.U,
+            Direction.L => Direction.R,
+        };
+    }
+};
+
+const Instruction = struct {
+    dir: DirectionChange,
+    steps: u32,
+};
+
+const AStarContext = struct {
+    walls: *const std.AutoHashMap(Coord, void),
+    start: Coord,
+    end: Coord,
+};
+
+const AStarContext2 = struct {
+    segments: *const std.ArrayList(LineSegment), // Wall segments
+    sortedXCoords: *const std.ArrayList(i32),
+    sortedYCoords: *const std.ArrayList(i32),
+    start: Coord,
+    end: Coord,
+};
+
+const LineSegment = struct {
+    start: Coord,
+    end: Coord,
 };

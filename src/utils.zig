@@ -15,7 +15,7 @@ pub fn readLine(reader: *Reader) ?[]const u8 {
 }
 
 // Generalized A Star algorithm. Many sub-functions must be supplied by caller. Returns final state and cost.
-pub fn aStar(
+pub fn aStarAuto(
     comptime State: type, // Must be compatible with auto hashing
     comptime Cost: type, // Must be a number
     comptime Context: type,
@@ -27,8 +27,6 @@ pub fn aStar(
     comptime estimateFn: fn (c: Context, s: State) Cost,
     // Function indicating goal is reached
     comptime isSolutionFn: fn (c: Context, s: State) bool,
-    comptime hashFn: fn (s: State) u64,
-    comptime equalsFn: fn (s1: State, s2: State) bool,
     initialState: State,
     context: Context,
     allocator: Allocator,
@@ -40,28 +38,17 @@ pub fn aStar(
             return std.math.order(aExpected, bExpected);
         }
     };
-    const HashContext = struct {
-        const Self = @This();
-        pub fn hash(self: Self, s: State) u64 {
-            _ = self;
-            return hashFn(s);
-        }
 
-        pub fn eql(self: Self, s1: State, s2: State) bool {
-            _ = self;
-            return equalsFn(s1, s2);
-        }
-    };
-
-    var priorityQueue = std.PriorityQueue(AStarContext(State, Cost), Context, Comparator.compare).init(allocator, context);
-    defer priorityQueue.deinit();
-    var seen = std.HashMap(State, Cost, HashContext, 75).init(allocator);
+    var priorityQueue = std.PriorityQueue(AStarContext(State, Cost), Context, Comparator.compare).initContext(context);
+    defer priorityQueue.deinit(allocator);
+    var seen = std.AutoHashMap(State, Cost).init(allocator);
     defer seen.deinit();
 
-    priorityQueue.add(AStarContext(State, Cost){ .s = initialState, .c = 0 }) catch std.debug.print("Failed to add to priority queue", .{});
+    priorityQueue.push(allocator, AStarContext(State, Cost){ .s = initialState, .c = 0 }) catch std.debug.print("Failed to add to priority queue", .{});
     seen.put(initialState, 0) catch std.debug.print("Failed to put", .{});
 
-    while (priorityQueue.removeOrNull()) |bestStateCost| {
+    while (priorityQueue.pop()) |bestStateCost| {
+        //std.debug.print("{any}\n",.{bestStateCost.s});
         if (isSolutionFn(context, bestStateCost.s)) {
             return bestStateCost.c;
         }
@@ -73,7 +60,7 @@ pub fn aStar(
             const existing = seen.get(state);
             if (existing == null or std.math.compare(existing.?, std.math.CompareOperator.gt, totalCost)) {
                 const newStateCost = AStarContext(State, Cost){ .s = state, .c = totalCost };
-                priorityQueue.add(newStateCost) catch std.debug.print("Failed to add to priority queue", .{});
+                priorityQueue.push(allocator, newStateCost) catch std.debug.print("Failed to add to priority queue", .{});
                 seen.put(state, totalCost) catch std.debug.print("Failed to put in hash map", .{});
             }
         }
