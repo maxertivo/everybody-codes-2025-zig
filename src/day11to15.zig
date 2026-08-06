@@ -650,6 +650,8 @@ fn igniteBarrels(grid: *[210][210]u8, queue: *std.Deque(UCoord), burned: *std.Au
     return burned.count();
 }
 
+// This only works because the given puzzle input is sorted
+// This assumption makes the calculation much easier
 fn countMovesToNormalizeSorted(columns: *std.ArrayList(u64)) u64 {
     var average: u64 = 0;
     for(columns.items) |item| {
@@ -800,12 +802,14 @@ const Instruction = struct {
     steps: u32,
 };
 
+// Used when going one step at a time in A* function
 const AStarContext = struct {
     walls: *const std.AutoHashMap(Coord, void),
     start: Coord,
     end: Coord,
 };
 
+// Used when going only to specific 'valid' x and y coordinates in A* function
 const AStarContext2 = struct {
     segments: *const std.ArrayList(LineSegment), // Wall segments
     sortedXCoords: *const std.ArrayList(i32),
