@@ -209,26 +209,24 @@ pub fn day14(allocator: Allocator, reader: *Reader) ![3]u64 {
 }
 
 pub fn day15(allocator: Allocator, reader: *Reader) ![3]u64 {
-    const instructions = try parseInstructions(allocator, reader);
-
-    const walls, const end = try getWalls(instructions, allocator);
-    const context = AStarContext{.walls = &walls, .start = .{.x = 0, .y = 0}, .end = end};
     const initialState = Coord{.x = 0, .y = 0};
+    const instructions = try parseInstructions(allocator, reader);
+    const context = try getContext(instructions, allocator);
     const cost1 = utils.aStarAuto(Coord, u32, AStarContext, nextStateFn, transitionCostFn, estimateFn, isSolutionFn, initialState, context, allocator).?;
 
     _ = readLine(reader);
     const instructions2 = try parseInstructions(allocator, reader);
     const context2 = try getContext(instructions2, allocator);
-    const cost2 = utils.aStarAuto(Coord, u32, AStarContext2, nextStateFn2, transitionCostFn2, estimateFn2, isSolutionFn2, initialState, context2, allocator).?;
+    const cost2 = utils.aStarAuto(Coord, u32, AStarContext, nextStateFn, transitionCostFn, estimateFn, isSolutionFn, initialState, context2, allocator).?;
 
     _ = readLine(reader);
     const instructions3 = try parseInstructions(allocator, reader);
     const context3 = try getContext(instructions3, allocator);
-    const cost3 = utils.aStarAuto(Coord, u32, AStarContext2, nextStateFn2, transitionCostFn2, estimateFn2, isSolutionFn2, initialState, context3, allocator).?;
+    const cost3 = utils.aStarAuto(Coord, u32, AStarContext, nextStateFn, transitionCostFn, estimateFn, isSolutionFn, initialState, context3, allocator).?;
     return [3]u64{cost1, cost2, cost3};
 }
 
-fn getContext(instructions: std.ArrayList(Instruction), allocator: Allocator) !AStarContext2 {
+fn getContext(instructions: std.ArrayList(Instruction), allocator: Allocator) !AStarContext {
     var segments = try allocator.create(std.ArrayList(LineSegment));
     segments.* = std.ArrayList(LineSegment).empty;
     var xCoords = std.AutoHashMap(i32, void).init(allocator);
@@ -293,47 +291,9 @@ fn getContext(instructions: std.ArrayList(Instruction), allocator: Allocator) !A
     return .{.segments = segments, .sortedXCoords = xCoordList, .sortedYCoords = yCoordList, .start = .{.x = 0, .y = 0}, .end = coord};
 }
 
-// Returns a Set of wall coordinates, and the destination coordinate
-fn getWalls(instructions: std.ArrayList(Instruction), allocator: Allocator) !struct{std.AutoHashMap(Coord, void), Coord} {
-    var walls = std.AutoHashMap(Coord, void).init(allocator);
-    var dir = Direction.U;
-    var coord = Coord{.x = 0, .y = 0};
-    for(instructions.items) |instruction| {
-        dir = dir.changeDirection(instruction.dir);
-        for(0..instruction.steps) |_| {
-            coord = coord.moveDir(dir);
-            try walls.put(coord, void{});
-        }
-    }
-    _ = walls.remove(coord);
-    return .{walls, coord};
-}
-
-// Takes one step in each direction
-fn nextStateFn(context: AStarContext, coord: Coord, allocator: Allocator) std.ArrayList(Coord) {
-    var list = std.ArrayList(Coord).empty;
-    const left = Coord{.x = coord.x - 1, .y = coord.y};
-    const right = Coord{.x = coord.x + 1, .y = coord.y};
-    const up = Coord{.x = coord.x, .y = coord.y + 1};
-    const down = Coord{.x = coord.x, .y = coord.y - 1};
-    if(!context.walls.contains(left)) {
-        list.append(allocator, left) catch unreachable;
-    }
-    if(!context.walls.contains(right)) {
-        list.append(allocator, right) catch unreachable;
-    }
-    if(!context.walls.contains(up)) {
-        list.append(allocator, up) catch unreachable;
-    }
-    if(!context.walls.contains(down)) {
-        list.append(allocator, down) catch unreachable;
-    }
-    return list;
-}
-
 // Go to neighboring x and y coordinates in the lists of valid coordinates.
 // This allows the next state to be a large distance away, which is more efficient for mazes with long walls.
-fn nextStateFn2(context: AStarContext2, coord: Coord, allocator: Allocator) std.ArrayList(Coord) {
+fn nextStateFn(context: AStarContext, coord: Coord, allocator: Allocator) std.ArrayList(Coord) {
     var list = std.ArrayList(Coord).empty;
     const xIndex = std.sort.binarySearch(i32, context.sortedXCoords.items, coord.x, compare).?;
     const xLower = if(xIndex > 0) context.sortedXCoords.items[xIndex - 1] else null;
@@ -360,11 +320,7 @@ fn nextStateFn2(context: AStarContext2, coord: Coord, allocator: Allocator) std.
     return list;
 }
 
-fn transitionCostFn(_: AStarContext, _: Coord, _: Coord) u32 {
-    return 1;
-}
-
-fn transitionCostFn2(_: AStarContext2, a: Coord, b: Coord) u32 {
+fn transitionCostFn(_: AStarContext, a: Coord, b: Coord) u32 {
     return @abs(a.x - b.x) + @abs(a.y - b.y);
 }
 
@@ -372,15 +328,7 @@ fn estimateFn(context: AStarContext, coord: Coord) u32 {
     return @abs(context.end.x - coord.x) + @abs(context.end.y - coord.y);
 }
 
-fn estimateFn2(context: AStarContext2, coord: Coord) u32 {
-    return @abs(context.end.x - coord.x) + @abs(context.end.y - coord.y);
-}
-
 fn isSolutionFn(context: AStarContext, coord: Coord) bool {
-    return coord.x == context.end.x and coord.y == context.end.y;
-}
-
-fn isSolutionFn2(context: AStarContext2, coord: Coord) bool {
     return coord.x == context.end.x and coord.y == context.end.y;
 }
 
@@ -802,15 +750,8 @@ const Instruction = struct {
     steps: u32,
 };
 
-// Used when going one step at a time in A* function
-const AStarContext = struct {
-    walls: *const std.AutoHashMap(Coord, void),
-    start: Coord,
-    end: Coord,
-};
-
 // Used when going only to specific 'valid' x and y coordinates in A* function
-const AStarContext2 = struct {
+const AStarContext = struct {
     segments: *const std.ArrayList(LineSegment), // Wall segments
     sortedXCoords: *const std.ArrayList(i32),
     sortedYCoords: *const std.ArrayList(i32),
