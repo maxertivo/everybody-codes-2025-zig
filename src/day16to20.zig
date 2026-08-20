@@ -159,6 +159,145 @@ pub fn day17(allocator: Allocator, reader: *Reader) ![3]u64 {
     return [3]u64{ result1, result2, result3 };
 }
 
+pub fn day18(allocator: Allocator, reader: *Reader) ![3]i64 {
+    const plantMap, _ = try createPlantMap(0, allocator, reader);
+    const parent = try findParent(&plantMap);
+    const result1 = calculateEnergy(32, &plantMap, parent, std.StaticBitSet(32).full);
+
+    const plantMap2, const testCases2 = try createPlantMap(32, allocator, reader);
+    const parent2 = try findParent(&plantMap2);
+    var result2: i64 = 0;
+    for(testCases2.items) |testCaseInput| {
+        result2 += calculateEnergy(32, &plantMap2, parent2, testCaseInput);
+    }
+
+    const plantMap3, const testCases3 = try createPlantMap(128, allocator, reader);
+    const parent3 = try findParent(&plantMap3);
+    const maxInput = getMaxInput(&plantMap3);
+    const maxResult = calculateEnergy(128, &plantMap3, parent3, maxInput);
+    var result3: i64 = 0;
+    for(testCases3.items) |testCaseInput| {
+        const result = calculateEnergy(128, &plantMap3, parent3, testCaseInput);
+        if(result != 0) {
+            result3 += maxResult - result;
+        }
+    }
+
+    return [3]i64{result1,result2,result3};
+}
+
+// This only works because this specific puzzle input is set up so that
+// each input plant is always positive weighted or always negative weighted.
+// We just set negative weighted inputs to 0
+fn getMaxInput(plantMap: *const std.AutoHashMap(u16, *Plant)) std.StaticBitSet(128) {
+    var maxInput = std.StaticBitSet(128).empty;
+    var maxInputPlantId: u16 = 0;
+    var it = plantMap.keyIterator();
+    while(it.next()) |key| {
+        const plant = plantMap.get(key.*).?;
+        for(plant.incomingBranches.items) |branch| {
+            if(branch.incomingPlant == null and plant.id > maxInputPlantId) {
+                maxInputPlantId = plant.id;
+            }
+        }
+    }
+    it = plantMap.keyIterator();
+    while(it.next()) |key| {
+        const plant = plantMap.get(key.*).?;
+        for(plant.incomingBranches.items) |branch| {
+            if(branch.thickness > 0 and branch.incomingPlant != null and branch.incomingPlant.? <= maxInputPlantId) {
+                maxInput.set(branch.incomingPlant.? - 1);
+            }
+        }
+    }
+    return maxInput;
+}
+
+fn calculateEnergy(comptime SIZE: comptime_int, plantMap: *const std.AutoHashMap(u16, *Plant), plant: *Plant, inputs: std.StaticBitSet(SIZE)) i64 {
+    var energy: i64 = 0;
+    for(plant.incomingBranches.items) |branch| {
+        if(branch.incomingPlant) |incomingId| {
+            const incomingPlant = plantMap.get(incomingId).?;
+            const incomingPlantEnergy = calculateEnergy(SIZE, plantMap, incomingPlant, inputs);
+            energy += incomingPlantEnergy * branch.thickness;
+        } else {
+            energy += if(inputs.isSet(branch.outgoingPlant - 1)) branch.thickness else 0;
+        }
+    }
+    return if(energy >= plant.thickness) energy else 0;
+}
+
+fn findParent(plantMap: *const std.AutoHashMap(u16, *Plant)) !*Plant {
+    var it = plantMap.keyIterator();
+    while(it.next()) |key| {
+        const plant = plantMap.get(key.*).?;
+        if(plant.outgoingBranches.items.len == 0) {
+            return plant;
+        }
+    }
+    return error.notFound;
+}
+
+fn createPlantMap(comptime BITSET_SIZE: comptime_int, allocator: Allocator, reader: *Reader) !struct{std.AutoHashMap(u16, *Plant), std.ArrayList(std.StaticBitSet(BITSET_SIZE))} {
+    var currentPlantId: u16 = 0;
+    var plantMap = std.AutoHashMap(u16, *Plant).init(allocator);
+    var testCases = std.ArrayList(std.StaticBitSet(BITSET_SIZE)).empty;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            continue;
+        }
+        if(line.len == 3 and line[0] == '~') {
+            break;
+        }
+        if(line[0] == 'P') {
+            var it = std.mem.tokenizeAny(u8, line, " :");
+            _ = it.next();
+            currentPlantId = try std.fmt.parseInt(u16, it.next().?, 10);
+            _ = it.next();
+            _ = it.next();
+            const thickness = try std.fmt.parseInt(u32, it.next().?, 10);
+            const list1 = try allocator.create(std.ArrayList(Branch));
+            list1.* = std.ArrayList(Branch).empty;
+            const list2 = try allocator.create(std.ArrayList(Branch));
+            list2.* = std.ArrayList(Branch).empty;
+            const plant = try allocator.create(Plant);
+            plant.* = .{.id = currentPlantId, .thickness = thickness, .incomingBranches = list1, .outgoingBranches = list2};
+            try plantMap.put(currentPlantId, plant);
+        } else if (line[2] == 'f') {
+            const plant = plantMap.get(currentPlantId).?;
+            const thickness = try std.fmt.parseInt(i32, line[29..], 10);
+            try plant.incomingBranches.append(allocator, .{.thickness = thickness, .outgoingPlant = currentPlantId});
+        } else if (line[2] == 'b') {
+            const plant = plantMap.get(currentPlantId).?;
+            var it = std.mem.tokenizeScalar(u8, line, ' ');
+            _ = it.next();
+            _ = it.next();
+            _ = it.next();
+            _ = it.next();
+            const incomingPlantId = try std.fmt.parseInt(u16, it.next().?, 10);
+            const incomingPlant = plantMap.get(incomingPlantId).?;
+            _ = it.next();
+            _ = it.next();
+            const thickness = try std.fmt.parseInt(i32, it.next().?, 10);
+            const branch: Branch = .{.thickness = thickness, .incomingPlant = incomingPlantId, .outgoingPlant = currentPlantId};
+            try plant.incomingBranches.append(allocator, branch);
+            try incomingPlant.outgoingBranches.append(allocator, branch);
+        } else if (line[0] == '0' or line[0] == '1') {
+            var it = std.mem.tokenizeScalar(u8, line, ' ');
+            var bitset = std.StaticBitSet(BITSET_SIZE).empty;
+            var bitNum: usize = 0;
+            while(it.next()) |bit| {
+                if(bit[0] == '1') {
+                    bitset.set(bitNum);
+                }
+                bitNum += 1;
+            }
+            try testCases.append(allocator, bitset);
+        }
+    }
+    return .{plantMap, testCases};
+}
+
 fn nextStateFn(context: AStarContext, state: AStarState, allocator: Allocator) std.ArrayList(AStarState) {
     //std.debug.print("{}\n", .{state.coord});
     var list = std.ArrayList(AStarState).empty;
@@ -324,4 +463,17 @@ const AStarContext = struct {
     volcano: UCoord,
     radius: usize,
     dim: usize,
+};
+
+const Plant = struct {
+    id: u16,
+    thickness: u32,
+    incomingBranches: *std.ArrayList(Branch),
+    outgoingBranches: *std.ArrayList(Branch),
+};
+
+const Branch = struct {
+    thickness: i32,
+    outgoingPlant: u16,
+    incomingPlant: ?u16 = null,
 };
