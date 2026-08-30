@@ -69,59 +69,6 @@ pub fn aStarAuto(
     return null;
 }
 
-// Fixed size array deque
-pub fn ArrayDeque(comptime T: type) type {
-    return struct {
-        items: []T,
-        allocator: Allocator,
-        head: usize = 0,
-        tail: usize = 0,
-        size: usize = 0,
-
-        pub fn initWithCapacity(allocator: Allocator, capacity: usize) !ArrayDeque(T) {
-            return ArrayDeque(T){ .allocator = allocator, .items = try allocator.alloc(T, capacity) };
-        }
-
-        pub fn deinit(self: *ArrayDeque(T)) void {
-            self.allocator.free(self.items);
-        }
-
-        pub fn addFirst(self: *ArrayDeque(T), item: T) void {
-            std.debug.assert(self.size < self.items.len);
-            self.head = if (self.head == 0) self.items.len - 1 else self.head - 1;
-            self.items[self.head] = item;
-            self.size += 1;
-        }
-
-        pub fn addLast(self: *ArrayDeque(T), item: T) void {
-            std.debug.assert(self.size < self.items.len);
-            self.items[self.tail] = item;
-            self.tail = if (self.tail >= self.items.len - 1) 0 else self.tail + 1;
-            self.size += 1;
-        }
-
-        pub fn popFirst(self: *ArrayDeque(T)) ?T {
-            if(self.size == 0) {
-                return null;
-            }
-            const result = self.items[self.head];
-            self.head = if (self.head >= self.items.len - 1) 0 else self.head + 1;
-            self.size -= 1;
-            return result;
-        }
-
-        pub fn popLast(self: *ArrayDeque(T)) ?T {
-            if(self.size == 0) {
-                return null;
-            }
-            self.tail = if (self.tail == 0) self.items.len - 1 else self.tail - 1;
-            const result = self.items[self.tail];
-            self.size -= 1;
-            return result;
-        }
-    };
-}
-
 // Map of key to slice of values. Returns empty slice if key not present.
 // Keys must be auto-hashable
 pub fn Multimap(comptime KeyType: type, comptime ValueType: type) type {
@@ -133,7 +80,7 @@ pub fn Multimap(comptime KeyType: type, comptime ValueType: type) type {
             return Multimap(KeyType, ValueType){ .map = std.AutoHashMap(KeyType, *std.ArrayList(ValueType)).init(allocator), .allocator = allocator };
         }
 
-        pub fn get(self: *Multimap(KeyType, ValueType), key: KeyType) []ValueType {
+        pub fn get(self: *const Multimap(KeyType, ValueType), key: KeyType) []ValueType {
             if (self.map.get(key)) |existing| {
                 return existing.items;
             } else {
@@ -152,7 +99,7 @@ pub fn Multimap(comptime KeyType: type, comptime ValueType: type) type {
             }
         }
 
-        pub fn contains(self: *Multimap(KeyType, ValueType), key: KeyType) bool {
+        pub fn contains(self: *const Multimap(KeyType, ValueType), key: KeyType) bool {
             return self.map.contains(key);
         }
 
@@ -171,11 +118,11 @@ pub fn Multimap(comptime KeyType: type, comptime ValueType: type) type {
             _ = self.map.remove(key);
         }
 
-        pub fn keyCount(self: *Multimap(KeyType, ValueType)) u64 {
+        pub fn keyCount(self: *const Multimap(KeyType, ValueType)) u64 {
             return @intCast(self.map.count());
         }
 
-        pub fn keyIterator(self: *Multimap(KeyType, ValueType)) std.AutoHashMap(KeyType, *std.ArrayList(ValueType)).KeyIterator {
+        pub fn keyIterator(self: *const Multimap(KeyType, ValueType)) std.AutoHashMap(KeyType, *std.ArrayList(ValueType)).KeyIterator {
             return self.map.keyIterator();
         }
 
@@ -189,7 +136,6 @@ pub fn Multimap(comptime KeyType: type, comptime ValueType: type) type {
         }
     };
 }
-
 
 fn AStarContext(comptime State: type, comptime Cost: type) type {
     return struct {

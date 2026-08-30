@@ -42,8 +42,8 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
     std.mem.copyForwards(u8, fullArray, line);
     std.mem.copyForwards(u8, fullArray[line.len..], line);
     std.mem.copyForwards(u8, fullArray[line.len * 2 ..], line);
-    var rearRange = try utils.ArrayDeque(u8).initWithCapacity(allocator, DIST + 1);
-    var frontRange = try utils.ArrayDeque(u8).initWithCapacity(allocator, DIST + 1);
+    var rearRange = try std.Deque(u8).initCapacity(allocator, DIST + 1);
+    var frontRange = try std.Deque(u8).initCapacity(allocator, DIST + 1);
     var rearCount = Count{ .a = 0, .b = 0, .c = 0 };
     var frontCount = Count{ .a = 0, .b = 0, .c = 0 };
     var count: u64 = 0;
@@ -51,7 +51,7 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
 
     // Fill front range
     for (0..DIST) |i| {
-        frontRange.addLast(fullArray[i]);
+        frontRange.pushBackAssumeCapacity(fullArray[i]);
         switch (fullArray[i]) {
             'A' => frontCount.a += 1,
             'B' => frontCount.b += 1,
@@ -62,14 +62,14 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
 
     // Fill rear range
     for (0..DIST) |i| {
-        const cur = frontRange.popFirst().?;
+        const cur = frontRange.popFront().?;
         switch (cur) {
             'A' => frontCount.a -= 1,
             'B' => frontCount.b -= 1,
             'C' => frontCount.c -= 1,
             else => {},
         }
-        frontRange.addLast(fullArray[i + DIST]);
+        frontRange.pushBackAssumeCapacity(fullArray[i + DIST]);
         switch (fullArray[i + DIST]) {
             'A' => frontCount.a += 1,
             'B' => frontCount.b += 1,
@@ -84,7 +84,7 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
             else => {},
         }
 
-        rearRange.addLast(cur);
+        rearRange.pushBackAssumeCapacity(cur);
         switch (cur) {
             'A' => rearCount.a += 1,
             'B' => rearCount.b += 1,
@@ -95,14 +95,14 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
 
     // Complete the first full iteration of the input
     for (DIST..line.len) |i| {
-        const cur = frontRange.popFirst().?;
+        const cur = frontRange.popFront().?;
         switch (cur) {
             'A' => frontCount.a -= 1,
             'B' => frontCount.b -= 1,
             'C' => frontCount.c -= 1,
             else => {},
         }
-        frontRange.addLast(fullArray[i + DIST]);
+        frontRange.pushBackAssumeCapacity(fullArray[i + DIST]);
         switch (fullArray[i + DIST]) {
             'A' => frontCount.a += 1,
             'B' => frontCount.b += 1,
@@ -117,14 +117,14 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
             else => {},
         }
 
-        rearRange.addLast(cur);
+        rearRange.pushBackAssumeCapacity(cur);
         switch (cur) {
             'A' => rearCount.a += 1,
             'B' => rearCount.b += 1,
             'C' => rearCount.c += 1,
             else => {},
         }
-        const prev = rearRange.popFirst().?;
+        const prev = rearRange.popFront().?;
         switch (prev) {
             'A' => rearCount.a -= 1,
             'B' => rearCount.b -= 1,
@@ -135,14 +135,14 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
 
     // Complete the second full iteration (this will be repeated 998 times)
     for (line.len..line.len * 2) |i| {
-        const cur = frontRange.popFirst().?;
+        const cur = frontRange.popFront().?;
         switch (cur) {
             'A' => frontCount.a -= 1,
             'B' => frontCount.b -= 1,
             'C' => frontCount.c -= 1,
             else => {},
         }
-        frontRange.addLast(fullArray[i + DIST]);
+        frontRange.pushBackAssumeCapacity(fullArray[i + DIST]);
         switch (fullArray[i + DIST]) {
             'A' => frontCount.a += 1,
             'B' => frontCount.b += 1,
@@ -157,14 +157,14 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
             else => {},
         }
 
-        rearRange.addLast(cur);
+        rearRange.pushBackAssumeCapacity(cur);
         switch (cur) {
             'A' => rearCount.a += 1,
             'B' => rearCount.b += 1,
             'C' => rearCount.c += 1,
             else => {},
         }
-        const prev = rearRange.popFirst().?;
+        const prev = rearRange.popFront().?;
         switch (prev) {
             'A' => rearCount.a -= 1,
             'B' => rearCount.b -= 1,
@@ -175,7 +175,7 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
 
     // Complete the final iteration of the input (front range will shrink to empty at the end)
     for (line.len * 2..line.len * 3) |i| {
-        const cur = frontRange.popFirst().?;
+        const cur = frontRange.popFront().?;
         switch (cur) {
             'A' => frontCount.a -= 1,
             'B' => frontCount.b -= 1,
@@ -183,7 +183,7 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
             else => {},
         }
         if (i + DIST < fullArray.len) {
-            frontRange.addLast(fullArray[i + DIST]);
+            frontRange.pushBackAssumeCapacity(fullArray[i + DIST]);
             switch (fullArray[i + DIST]) {
                 'A' => frontCount.a += 1,
                 'B' => frontCount.b += 1,
@@ -199,14 +199,14 @@ pub fn day6(allocator: Allocator, reader: *Reader) ![3]u64 {
             else => {},
         }
 
-        rearRange.addLast(cur);
+        rearRange.pushBackAssumeCapacity(cur);
         switch (cur) {
             'A' => rearCount.a += 1,
             'B' => rearCount.b += 1,
             'C' => rearCount.c += 1,
             else => {},
         }
-        const prev = rearRange.popFirst().?;
+        const prev = rearRange.popFront().?;
         switch (prev) {
             'A' => rearCount.a -= 1,
             'B' => rearCount.b -= 1,

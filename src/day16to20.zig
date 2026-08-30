@@ -6,6 +6,7 @@ const Reader = std.Io.Reader;
 const fs = std.fs;
 
 const readLine = utils.readLine;
+const Multimap = utils.Multimap;
 
 const DIM1: usize = 40;
 const DIM2: usize = 101;
@@ -167,7 +168,7 @@ pub fn day18(allocator: Allocator, reader: *Reader) ![3]i64 {
     const plantMap2, const testCases2 = try createPlantMap(32, allocator, reader);
     const parent2 = try findParent(&plantMap2);
     var result2: i64 = 0;
-    for(testCases2.items) |testCaseInput| {
+    for (testCases2.items) |testCaseInput| {
         result2 += calculateEnergy(32, &plantMap2, parent2, testCaseInput);
     }
 
@@ -176,14 +177,104 @@ pub fn day18(allocator: Allocator, reader: *Reader) ![3]i64 {
     const maxInput = getMaxInput(&plantMap3);
     const maxResult = calculateEnergy(128, &plantMap3, parent3, maxInput);
     var result3: i64 = 0;
-    for(testCases3.items) |testCaseInput| {
+    for (testCases3.items) |testCaseInput| {
         const result = calculateEnergy(128, &plantMap3, parent3, testCaseInput);
-        if(result != 0) {
+        if (result != 0) {
             result3 += maxResult - result;
         }
     }
 
-    return [3]i64{result1,result2,result3};
+    return [3]i64{ result1, result2, result3 };
+}
+
+pub fn day19(allocator: Allocator, reader: *Reader) ![3]u64 {
+    const multimap1, const dists1 = try parsePassages(allocator, reader);
+    const result1 = try findMinFlaps(allocator, &multimap1, &dists1);
+
+    const multimap2, const dists2 = try parsePassages(allocator, reader);
+    const result2 = try findMinFlaps(allocator, &multimap2, &dists2);
+
+    const multimap3, const dists3 = try parsePassages(allocator, reader);
+    const result3 = try findMinFlaps(allocator, &multimap3, &dists3);
+
+    return [3]u64{ result1, result2, result3 };
+}
+
+fn parsePassages(allocator: Allocator, reader: *Reader) !struct { Multimap(u32, Passage), std.ArrayList(u32) } {
+    var passagesByDist = Multimap(u32, Passage).init(allocator);
+    var uniqueDists = std.ArrayList(u32).empty;
+    while (readLine(reader)) |line| {
+        if (line.len == 0) {
+            break;
+        }
+        var it = std.mem.tokenizeScalar(u8, line, ',');
+        const dist = try std.fmt.parseInt(u32, it.next().?, 10);
+        const bottom = try std.fmt.parseInt(u32, it.next().?, 10);
+        const height = try std.fmt.parseInt(u32, it.next().?, 10);
+        try passagesByDist.put(dist, .{ .dist = dist, .range = .{ .bottom = bottom, .top = bottom + height - 1 } });
+        if (uniqueDists.items.len == 0 or uniqueDists.items[uniqueDists.items.len - 1] != dist) {
+            try uniqueDists.append(allocator, dist);
+        }
+    }
+    return .{ passagesByDist, uniqueDists };
+}
+
+fn findMinFlaps(allocator: Allocator, passagesByDist: *const Multimap(u32, Passage), uniqueDists: *const std.ArrayList(u32)) !u64 {
+    var reachableRanges = try allocator.create(std.ArrayList(Range));
+    reachableRanges.* = .empty;
+    var reachableRangesTemp = try allocator.create(std.ArrayList(Range));
+    reachableRangesTemp.* = .empty;
+    try reachableRanges.append(allocator, Range{ .bottom = 0, .top = 0 });
+    var curDist: u32 = 0;
+    for (uniqueDists.items) |dist| {
+        for (passagesByDist.get(dist)) |passage| {
+            for (reachableRanges.items) |reachableRange| {
+                const max = reachableRange.top + (passage.dist - curDist);
+                const min = if (passage.dist - curDist >= reachableRange.bottom) 0 else reachableRange.bottom - (passage.dist - curDist);
+                const newReachableRange = Range{ .bottom = @max(min, passage.range.bottom), .top = @min(max, passage.range.top) };
+                if (newReachableRange.bottom <= newReachableRange.top) {
+                    try reachableRangesTemp.append(allocator, newReachableRange);
+                }
+            }
+        }
+        mergeRanges(reachableRangesTemp);
+        const swap = reachableRanges;
+        reachableRanges = reachableRangesTemp;
+        reachableRangesTemp = swap;
+        reachableRangesTemp.clearRetainingCapacity();
+        curDist = dist;
+    }
+
+    var minBottom = reachableRanges.items[0].bottom;
+    for (reachableRanges.items) |reachableRange| {
+        if (reachableRange.bottom < minBottom) {
+            minBottom = reachableRange.bottom;
+        }
+    }
+
+    return try std.math.divCeil(u32, curDist + minBottom, 2);
+}
+
+fn mergeRanges(list: *std.ArrayList(Range)) void {
+    var i: usize = 0;
+    while (i < list.items.len) {
+        var j = i + 1;
+        while (j < list.items.len) {
+            if (overlap(list.items[i], list.items[j])) {
+                const newRange = Range{ .bottom = @min(list.items[i].bottom, list.items[j].bottom), .top = @max(list.items[i].top, list.items[j].top) };
+                list.items[i] = newRange;
+                _ = list.swapRemove(j);
+                j = i + 1;
+            } else {
+                j += 1;
+            }
+        }
+        i += 1;
+    }
+}
+
+fn overlap(r1: Range, r2: Range) bool {
+    return (r1.bottom <= r2.top and r2.bottom <= r1.top) or r1.top + 1 == r2.bottom or r2.top + 1 == r1.bottom;
 }
 
 // This only works because this specific puzzle input is set up so that
@@ -193,19 +284,19 @@ fn getMaxInput(plantMap: *const std.AutoHashMap(u16, *Plant)) std.StaticBitSet(1
     var maxInput = std.StaticBitSet(128).empty;
     var maxInputPlantId: u16 = 0;
     var it = plantMap.keyIterator();
-    while(it.next()) |key| {
+    while (it.next()) |key| {
         const plant = plantMap.get(key.*).?;
-        for(plant.incomingBranches.items) |branch| {
-            if(branch.incomingPlant == null and plant.id > maxInputPlantId) {
+        for (plant.incomingBranches.items) |branch| {
+            if (branch.incomingPlant == null and plant.id > maxInputPlantId) {
                 maxInputPlantId = plant.id;
             }
         }
     }
     it = plantMap.keyIterator();
-    while(it.next()) |key| {
+    while (it.next()) |key| {
         const plant = plantMap.get(key.*).?;
-        for(plant.incomingBranches.items) |branch| {
-            if(branch.thickness > 0 and branch.incomingPlant != null and branch.incomingPlant.? <= maxInputPlantId) {
+        for (plant.incomingBranches.items) |branch| {
+            if (branch.thickness > 0 and branch.incomingPlant != null and branch.incomingPlant.? <= maxInputPlantId) {
                 maxInput.set(branch.incomingPlant.? - 1);
             }
         }
@@ -215,41 +306,41 @@ fn getMaxInput(plantMap: *const std.AutoHashMap(u16, *Plant)) std.StaticBitSet(1
 
 fn calculateEnergy(comptime SIZE: comptime_int, plantMap: *const std.AutoHashMap(u16, *Plant), plant: *Plant, inputs: std.StaticBitSet(SIZE)) i64 {
     var energy: i64 = 0;
-    for(plant.incomingBranches.items) |branch| {
-        if(branch.incomingPlant) |incomingId| {
+    for (plant.incomingBranches.items) |branch| {
+        if (branch.incomingPlant) |incomingId| {
             const incomingPlant = plantMap.get(incomingId).?;
             const incomingPlantEnergy = calculateEnergy(SIZE, plantMap, incomingPlant, inputs);
             energy += incomingPlantEnergy * branch.thickness;
         } else {
-            energy += if(inputs.isSet(branch.outgoingPlant - 1)) branch.thickness else 0;
+            energy += if (inputs.isSet(branch.outgoingPlant - 1)) branch.thickness else 0;
         }
     }
-    return if(energy >= plant.thickness) energy else 0;
+    return if (energy >= plant.thickness) energy else 0;
 }
 
 fn findParent(plantMap: *const std.AutoHashMap(u16, *Plant)) !*Plant {
     var it = plantMap.keyIterator();
-    while(it.next()) |key| {
+    while (it.next()) |key| {
         const plant = plantMap.get(key.*).?;
-        if(plant.outgoingBranches.items.len == 0) {
+        if (plant.outgoingBranches.items.len == 0) {
             return plant;
         }
     }
     return error.notFound;
 }
 
-fn createPlantMap(comptime BITSET_SIZE: comptime_int, allocator: Allocator, reader: *Reader) !struct{std.AutoHashMap(u16, *Plant), std.ArrayList(std.StaticBitSet(BITSET_SIZE))} {
+fn createPlantMap(comptime BITSET_SIZE: comptime_int, allocator: Allocator, reader: *Reader) !struct { std.AutoHashMap(u16, *Plant), std.ArrayList(std.StaticBitSet(BITSET_SIZE)) } {
     var currentPlantId: u16 = 0;
     var plantMap = std.AutoHashMap(u16, *Plant).init(allocator);
     var testCases = std.ArrayList(std.StaticBitSet(BITSET_SIZE)).empty;
-    while(readLine(reader)) |line| {
-        if(line.len == 0) {
+    while (readLine(reader)) |line| {
+        if (line.len == 0) {
             continue;
         }
-        if(line.len == 3 and line[0] == '~') {
+        if (line.len == 3 and line[0] == '~') {
             break;
         }
-        if(line[0] == 'P') {
+        if (line[0] == 'P') {
             var it = std.mem.tokenizeAny(u8, line, " :");
             _ = it.next();
             currentPlantId = try std.fmt.parseInt(u16, it.next().?, 10);
@@ -261,12 +352,12 @@ fn createPlantMap(comptime BITSET_SIZE: comptime_int, allocator: Allocator, read
             const list2 = try allocator.create(std.ArrayList(Branch));
             list2.* = std.ArrayList(Branch).empty;
             const plant = try allocator.create(Plant);
-            plant.* = .{.id = currentPlantId, .thickness = thickness, .incomingBranches = list1, .outgoingBranches = list2};
+            plant.* = .{ .id = currentPlantId, .thickness = thickness, .incomingBranches = list1, .outgoingBranches = list2 };
             try plantMap.put(currentPlantId, plant);
         } else if (line[2] == 'f') {
             const plant = plantMap.get(currentPlantId).?;
             const thickness = try std.fmt.parseInt(i32, line[29..], 10);
-            try plant.incomingBranches.append(allocator, .{.thickness = thickness, .outgoingPlant = currentPlantId});
+            try plant.incomingBranches.append(allocator, .{ .thickness = thickness, .outgoingPlant = currentPlantId });
         } else if (line[2] == 'b') {
             const plant = plantMap.get(currentPlantId).?;
             var it = std.mem.tokenizeScalar(u8, line, ' ');
@@ -279,15 +370,15 @@ fn createPlantMap(comptime BITSET_SIZE: comptime_int, allocator: Allocator, read
             _ = it.next();
             _ = it.next();
             const thickness = try std.fmt.parseInt(i32, it.next().?, 10);
-            const branch: Branch = .{.thickness = thickness, .incomingPlant = incomingPlantId, .outgoingPlant = currentPlantId};
+            const branch: Branch = .{ .thickness = thickness, .incomingPlant = incomingPlantId, .outgoingPlant = currentPlantId };
             try plant.incomingBranches.append(allocator, branch);
             try incomingPlant.outgoingBranches.append(allocator, branch);
         } else if (line[0] == '0' or line[0] == '1') {
             var it = std.mem.tokenizeScalar(u8, line, ' ');
             var bitset = std.StaticBitSet(BITSET_SIZE).empty;
             var bitNum: usize = 0;
-            while(it.next()) |bit| {
-                if(bit[0] == '1') {
+            while (it.next()) |bit| {
+                if (bit[0] == '1') {
                     bitset.set(bitNum);
                 }
                 bitNum += 1;
@@ -295,7 +386,7 @@ fn createPlantMap(comptime BITSET_SIZE: comptime_int, allocator: Allocator, read
             try testCases.append(allocator, bitset);
         }
     }
-    return .{plantMap, testCases};
+    return .{ plantMap, testCases };
 }
 
 fn nextStateFn(context: AStarContext, state: AStarState, allocator: Allocator) std.ArrayList(AStarState) {
@@ -476,4 +567,14 @@ const Branch = struct {
     thickness: i32,
     outgoingPlant: u16,
     incomingPlant: ?u16 = null,
+};
+
+const Passage = struct {
+    dist: u32,
+    range: Range,
+};
+
+const Range = struct {
+    bottom: u32,
+    top: u32,
 };
