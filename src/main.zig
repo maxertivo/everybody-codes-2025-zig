@@ -13,14 +13,12 @@ pub fn main(init: std.process.Init) !void {
     const allocator = init.arena;
     const startTime = std.Io.Timestamp.now(io, .real);
 
-    const result1p1 = try solveDay([20]u8, "src/inputs/day1-1.txt", io, allocator, part1.day1p1);
-    const result1p2 = try solveDay([20]u8, "src/inputs/day1-2.txt", io, allocator, part1.day1p2);
-    const result1p3 = try solveDay([20]u8, "src/inputs/day1-3.txt", io, allocator, part1.day1p3);
+    const result1 = try solveDay([3][20]u8, "src/inputs/day1.txt", io, allocator, part1.day1);
 
-    println(io, "Day 1: {{ {s}, {s}, {s} }}", .{ result1p1, result1p2, result1p3 });
+    println(io, "Day 1: {{ {s}, {s}, {s} }}", .{ result1[0], result1[1], result1[2] });
 
-    // const result2 = try solveDay([3][20]u8, "src/inputs/day2.txt", io, allocator, part1.day2);
-    // println(io, "Day 2: {{ {s}, {s}, {s} }}", .{result2[0], result2[1], result2[2]});
+    const result2 = try solveDay([3][20]u8, "src/inputs/day2.txt", io, allocator, part1.day2);
+    println(io, "Day 2: {{ {s}, {s}, {s} }}", .{result2[0], result2[1], result2[2]});
 
     const result3 = try solveDay([3]u32, "src/inputs/day3.txt", io, allocator, part1.day3);
     println(io, "Day 3: {any}", .{result3});
@@ -49,8 +47,8 @@ pub fn main(init: std.process.Init) !void {
     const result11 = try solveDay([3]u64, "src/inputs/day11.txt", io, allocator, part3.day11);
     println(io, "Day 11: {any}", .{result11});
 
-    // const result12 = try solveDay([3]u64, "src/inputs/day12.txt", io, allocator, part3.day12);
-    // println(io, "Day 12: {any}", .{result12});
+    const result12 = try solveDay([3]u64, "src/inputs/day12.txt", io, allocator, part3.day12);
+    println(io, "Day 12: {any}", .{result12});
 
     const result13 = try solveDay([3]u64, "src/inputs/day13.txt", io, allocator, part3.day13);
     println(io, "Day 13: {any}", .{result13});
@@ -73,8 +71,8 @@ pub fn main(init: std.process.Init) !void {
     const result19 = try solveDay([3]u64, "src/inputs/day19.txt", io, allocator, part4.day19);
     println(io, "Day 19: {any}", .{result19});
 
-    // const result20 = try part4.day20(allocator);
-    // println("Day 20: {any}", .{result20});
+    const result20 = try solveDay([3]u64, "src/inputs/day20.txt", io, allocator, part4.day20);
+    println(io, "Day 20: {any}", .{result20});
 
     const endTime = std.Io.Timestamp.now(io, .real);
     println(io, "Elapsed time in ms: {d}", .{endTime.toMilliseconds() - startTime.toMilliseconds()});

@@ -1,0 +1,11 @@
+Zynzar,Elvarthys,Nylmir,Thazfal,Vornnoris,Cyndoryn,Aelral,Cyndeon,Balthkynar,Lazirtal
+
+L7,R6,L1,R6,L2,R9,L1,R6,L5,R1,L6
+
+Kharris,Ilmarsar,Falox,Azcoryx,Shaelgnar,Raeljor,Rahelor,Nythvash,Draiththys,Qalnor,Shaeleon,Thazfyr,Felnzor,Nexdra,Skarpyr,Drakox,Cyndthar,Tharthyn,Elvarryn,Myrsyron
+
+L7,R6,L9,R12,L7,R8,L8,R14,L10,R10,L5,R9,L5,R11,L5,R10,L5,R17,L5,R5,L10,R11,L10,R11,L7,R7,L12,R12,L14
+
+Yndacris,Urcalyx,Durnral,Harnjorath,Thazagrath,Tirluth,Cyndnarel,Urakther,Balthgnaris,Naldralis,Kronadir,Vyrlyr,Fenxaril,Sorsin,Braerilor,Sarfeth,Vaelnixis,Nylmir,Vanfeth,Galasis,Hazaris,Uraksarix,Naronar,Zyrlyr,Wynzral,Zorkynar,Bryncarth,Tharncarth,Brythaxar,Lazxel
+
+L16,R15,L13,R41,L13,R32,L19,R16,L35,R14,L19,R36,L44,R32,L45,R41,L49,R5,L34,R19,L5,R46,L5,R27,L5,R18,L5,R9,L5,R34,L5,R40,L5,R25,L5,R6,L5,R29,L5,R36,L5,R47,L34,R27,L31,R33,L29,R28,L30,R35,L34,R23,L31,R29,L17,R21,L32,R16,L34

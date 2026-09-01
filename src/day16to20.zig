@@ -200,6 +200,190 @@ pub fn day19(allocator: Allocator, reader: *Reader) ![3]u64 {
     return [3]u64{ result1, result2, result3 };
 }
 
+pub fn day20(allocator: Allocator, reader: *Reader) ![3]u64 {
+    const grid1, const width1, _, _ = try parseTriangleGrid(DIM1, allocator, reader);
+
+    var pairs = std.AutoHashMap(Pair(UCoord), void).init(allocator);
+    for(0..width1 + 1) |y| {
+        for(0..width1 + 1) |x| {
+            if(grid1[x][y] == Tile.TRAMPOLINE) {
+                const neighbors = findNeighbors(x, y);
+                for(neighbors) |neighbor| {
+                    if(neighbor != null and grid1[neighbor.?.x][neighbor.?.y] == Tile.TRAMPOLINE) {
+                        const coord = UCoord{.x = x, .y = y};
+                        const pair = Pair(UCoord){.a = minCoord(coord, neighbor.?), .b = maxCoord(coord, neighbor.?)};
+                        try pairs.put(pair, void{});
+                    }
+                }
+            }
+        }
+    }
+
+    const grid2, _, const start2, const end2 = try parseTriangleGrid(DIM3, allocator, reader);
+    const context2 = TriangleGridContext{.grid1 = grid2, .grid2 = grid2, .grid3 = grid2, .end1 = end2, .end2 = end2, .end3 = end2};
+    const initialState2 = TriangleGridState{.coord = start2, .turns = 0};
+    const result2 = utils.aStarAuto(TriangleGridState, u32, TriangleGridContext, nextStates, transitionCost, estimateFunc, isSolution, initialState2, context2, allocator).?;
+
+    const grid3, const width3, const start3, const end3 = try parseTriangleGrid(DIM3, allocator, reader);
+    const context3 = try createRotatingTriangleContext(grid3, end3, width3, allocator);
+    const initialState3 = TriangleGridState{.coord = start3, .turns = 0};
+    const result3 = utils.aStarAuto(TriangleGridState, u32, TriangleGridContext, nextStates, transitionCost, estimateFunc, isSolution, initialState3, context3, allocator).?;
+
+    return [3]u64{ pairs.count(), result2, result3 };
+}
+
+fn createRotatingTriangleContext(grid: *[DIM3][DIM3]Tile, end: UCoord, width: usize, allocator: Allocator) !TriangleGridContext {
+    const grid2, const end2 = try rotateGrid(grid, end, width, allocator);
+    const grid3, const end3 = try rotateGrid(grid2, end2, width, allocator);
+    return .{.grid1 = grid, .grid2 = grid2, .grid3 = grid3, .end1 = end, .end2 = end2, .end3 = end3};
+}
+
+fn rotateGrid(grid: *[DIM3][DIM3]Tile, end: UCoord, width: usize, allocator: Allocator) !struct{*[DIM3][DIM3]Tile, UCoord} {
+    const rotatedGrid = try allocator.create([DIM3][DIM3]Tile);
+    rotatedGrid.* = @splat(@splat(Tile.WALL));
+    var rotatedEnd = UCoord{.x = 0, .y = 0};
+    const numRows = (width + 1) / 2;
+    for(0..numRows) |i| {
+        var srcPoint = UCoord{.x = i, .y = i};
+        var destPoint = UCoord{.x = width - 1 - (2 * i), .y = 0};
+        var moveLeft = true; // otherwise down
+        while(grid[srcPoint.x][srcPoint.y] != Tile.WALL) {
+            rotatedGrid[destPoint.x][destPoint.y] = grid[srcPoint.x][srcPoint.y];
+            if(srcPoint.x == end.x and srcPoint.y == end.y) {
+                rotatedEnd = destPoint;
+            }
+
+            if(destPoint.x == 0) {
+                break;
+            }
+
+            srcPoint.x += 1;
+            if(moveLeft) {
+                destPoint.x -= 1;
+            } else {
+                destPoint.y += 1;
+            }
+            moveLeft = !moveLeft;
+        }
+    }
+    return .{rotatedGrid, rotatedEnd};
+}
+
+fn nextStates(context: TriangleGridContext, state: TriangleGridState, allocator: Allocator) std.ArrayList(TriangleGridState) {
+    const turns = state.turns;
+    var list = std.ArrayList(TriangleGridState).initCapacity(allocator, 4) catch unreachable;
+    const neighbors = findNeighbors(state.coord.x, state.coord.y);
+    const grid = if(turns % 3 == 0) context.grid2 else if (turns % 3 == 1) context.grid3 else context.grid1;
+    for(neighbors) |neighbor| {
+        if(neighbor) |n| {
+            if(grid[n.x][n.y] == Tile.TRAMPOLINE) {
+                list.appendAssumeCapacity(.{.coord = n, .turns = turns + 1});
+            }
+        }
+    }
+    if(grid[state.coord.x][state.coord.y] == Tile.TRAMPOLINE) {
+        list.appendAssumeCapacity(.{.coord = state.coord, .turns = turns + 1});
+    }
+    return list;
+}
+
+fn transitionCost(_: TriangleGridContext, _: TriangleGridState, _: TriangleGridState) u32 {
+    return 1;
+}
+
+fn estimateFunc(context: TriangleGridContext, state: TriangleGridState) u32 {
+    const end = switch (state.turns % 3) {
+        0 => context.end1,
+        1 => context.end2,
+        2 => context.end3,
+        else => unreachable,
+    };
+    const cost = @max(end.x, state.coord.x) - @min(end.x, state.coord.x) + @max(end.y, state.coord.y) - @min(end.y, state.coord.y);
+    return @intCast(cost);
+}
+
+fn isSolution(context: TriangleGridContext, state: TriangleGridState) bool {
+    return switch (state.turns % 3) {
+        0 => context.end1.x == state.coord.x and context.end1.y == state.coord.y,
+        1 => context.end2.x == state.coord.x and context.end2.y == state.coord.y,
+        2 => context.end3.x == state.coord.x and context.end3.y == state.coord.y,
+        else => unreachable,
+    };
+}
+
+fn parseTriangleGrid(comptime DIM: usize, allocator: Allocator, reader: *Reader) !struct{*[DIM][DIM]Tile, usize, UCoord, UCoord} {
+    const grid = try allocator.create([DIM][DIM]Tile);
+    grid.* = @splat(@splat(Tile.WALL));
+    var start = UCoord{.x = 0, .y = 0};
+    var end = UCoord{.x = 0, .y = 0};
+
+    var lineNum: usize = 0;
+    var width: usize = 0;
+    while(readLine(reader)) |line| {
+        if(line.len == 0) {
+            break;
+        }
+        width = line.len;
+        for(line, 0..) |char, x| {
+            if(char == 'T') {
+                grid[x][lineNum] = Tile.TRAMPOLINE;
+            } else if (char == '#') {
+                grid[x][lineNum] = Tile.EMPTY;
+            } else if (char == 'S') {
+                start = .{.x = x, .y = lineNum};
+                grid[x][lineNum] = Tile.TRAMPOLINE;
+            } else if (char == 'E') {
+                end = .{.x = x, .y = lineNum};
+                grid[x][lineNum] = Tile.TRAMPOLINE;
+            }
+        }
+        lineNum += 1;
+    }
+    return .{grid, width, start, end};
+}
+
+fn minCoord(a: UCoord, b: UCoord) UCoord {
+    if(a.x < b.x) {
+        return a;
+    } else if (a.x > b.x) {
+        return b;
+    } else if (a.y < b.y) {
+        return a;
+    } else if (a.y > b.y) {
+        return b;
+    }
+    return a;
+}
+
+fn maxCoord(a: UCoord, b: UCoord) UCoord {
+    if(a.x < b.x) {
+        return b;
+    } else if (a.x > b.x) {
+        return a;
+    } else if (a.y < b.y) {
+        return b;
+    } else if (a.y > b.y) {
+        return a;
+    }
+    return b;
+}
+
+fn findNeighbors(x: usize, y: usize) [3]?UCoord {
+    if((x + y) % 2 == 0) {
+        // Downward triangle
+        const n1: ?UCoord = UCoord{.x = x + 1, .y = y};
+        const n2: ?UCoord = if(x > 0) UCoord{.x = x - 1, .y = y} else null;
+        const n3: ?UCoord = if(y > 0) UCoord{.x = x, .y = y - 1} else null;
+        return [3]?UCoord{n1, n2, n3};
+    } else {
+        // Upward triangle
+        const n1: ?UCoord = UCoord{.x = x + 1, .y = y};
+        const n2: ?UCoord = if(x > 0) UCoord{.x = x - 1, .y = y} else null;
+        const n3: ?UCoord = UCoord{.x = x, .y = y + 1};
+        return [3]?UCoord{n1, n2, n3};
+    }
+}
+
 fn parsePassages(allocator: Allocator, reader: *Reader) !struct { Multimap(u32, Passage), std.ArrayList(u32) } {
     var passagesByDist = Multimap(u32, Passage).init(allocator);
     var uniqueDists = std.ArrayList(u32).empty;
@@ -264,7 +448,7 @@ fn mergeRanges(list: *std.ArrayList(Range)) void {
                 const newRange = Range{ .bottom = @min(list.items[i].bottom, list.items[j].bottom), .top = @max(list.items[i].top, list.items[j].top) };
                 list.items[i] = newRange;
                 _ = list.swapRemove(j);
-                j = i + 1;
+                j = i + 1; // need to re-check all of the ranges again against the newly merged range
             } else {
                 j += 1;
             }
@@ -578,3 +762,30 @@ const Range = struct {
     bottom: u32,
     top: u32,
 };
+
+const TriangleGridContext = struct {
+    grid1: *[DIM3][DIM3]Tile, // original
+    grid2: *[DIM3][DIM3]Tile, // rotated 120 degrees
+    grid3: *[DIM3][DIM3]Tile, // rotated 240 degrees
+    end1: UCoord, // end in grid1
+    end2: UCoord, // end in grid2
+    end3: UCoord, // end in grid3
+};
+
+const TriangleGridState = struct {
+    coord: UCoord,
+    turns: u32,
+};
+
+const Tile = enum {
+    TRAMPOLINE,
+    EMPTY,
+    WALL
+};
+
+fn Pair(comptime T: type) type {
+    return struct {
+        a: T,
+        b: T,
+    };
+}

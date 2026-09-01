@@ -7,145 +7,13 @@ const fs = std.fs;
 
 const readLine = utils.readLine;
 
-pub fn day1p1(allocator: Allocator, reader: *Reader) ![20]u8 {
-    var stringList = std.ArrayList([]u8).empty;
-    var instructions = std.ArrayList(Instruction).empty;
-
-    const line1 = readLine(reader) orelse return error.invalid;
-    var it = std.mem.tokenizeScalar(u8, line1, ',');
-    while(it.next()) |next| {
-        const dupe = try allocator.dupe(u8, next);
-        try stringList.append(allocator, dupe);
-    }
+pub fn day1(allocator: Allocator, reader: *Reader) ![3][20]u8 {
+    const result1 = try day1Part1(allocator, reader);
     _ = try reader.discardDelimiterInclusive('\n');
-    const line2 = readLine(reader) orelse return error.invalid;
-    it = std.mem.tokenizeScalar(u8, line2, ',');
-    while(it.next()) |next| {
-        const amount = try std.fmt.parseInt(u32, next[1..], 10);
-        try instructions.append(allocator, .{.goRight = next[0] == 'R', .amount = amount});
-    }
-
-    var part1: [20]u8 = @splat(0);
-
-    var index: i64 = 0;
-    for(instructions.items) |item| {
-        if(item.goRight) {
-            index += item.amount;
-            if(index >= stringList.items.len) {
-                index = @as(i64, @intCast(stringList.items.len - 1));
-            }
-        } else {
-            if(item.amount >= index) {
-                index = 0;
-            } else {
-                index -= item.amount;
-            }
-        }
-    }
-
-    std.mem.copyForwards(u8, &part1, stringList.items[@abs(index)]);
-
-    index = 0;
-    for(instructions.items) |item| {
-        if(item.goRight) {
-            index += item.amount;
-            while(index >= stringList.items.len) {
-                index -= @as(i64, @intCast(stringList.items.len));
-            }
-        } else {
-            index -= item.amount;
-            while(index < 0) {
-                index += @as(i64, @intCast(stringList.items.len));
-            }
-        }
-    }
-
-    std.mem.copyForwards(u8, &part1, stringList.items[@abs(index)]);
-
-    return part1;
-}
-
-pub fn day1p2(allocator: Allocator, reader: *Reader) ![20]u8 {
-    var stringList = std.ArrayList([]u8).empty;
-    var instructions = std.ArrayList(Instruction).empty;
-
-    const line1 = readLine(reader) orelse return error.invalid;
-    var it = std.mem.tokenizeScalar(u8, line1, ',');
-    while(it.next()) |next| {
-        const dupe = try allocator.dupe(u8, next);
-        try stringList.append(allocator, dupe);
-    }
+    const result2 = try day1Part2(allocator, reader);
     _ = try reader.discardDelimiterInclusive('\n');
-    const line2 = readLine(reader) orelse return error.invalid;
-    it = std.mem.tokenizeScalar(u8, line2, ',');
-    while(it.next()) |next| {
-        const amount = try std.fmt.parseInt(u32, next[1..], 10);
-        try instructions.append(allocator, .{.goRight = next[0] == 'R', .amount = amount});
-    }
-
-    var part2: [20]u8 = @splat(0);
-
-    var index: i64 = 0;
-    for(instructions.items) |item| {
-        if(item.goRight) {
-            index += item.amount;
-            while(index >= stringList.items.len) {
-                index -= @as(i64, @intCast(stringList.items.len));
-            }
-        } else {
-            index -= item.amount;
-            while(index < 0) {
-                index += @as(i64, @intCast(stringList.items.len));
-            }
-        }
-    }
-
-    std.mem.copyForwards(u8, &part2, stringList.items[@abs(index)]);
-
-    return part2;
-}
-
-pub fn day1p3(allocator: Allocator, reader: *Reader) ![20]u8 {
-    var stringList = std.ArrayList([]u8).empty;
-    var instructions = std.ArrayList(Instruction).empty;
-
-    const line1 = readLine(reader) orelse return error.invalid;
-    var it = std.mem.tokenizeScalar(u8, line1, ',');
-    while(it.next()) |next| {
-        const dupe = try allocator.dupe(u8, next);
-        try stringList.append(allocator, dupe);
-    }
-    _ = try reader.discardDelimiterInclusive('\n');
-    const line2 = readLine(reader) orelse return error.invalid;
-    it = std.mem.tokenizeScalar(u8, line2, ',');
-    while(it.next()) |next| {
-        const amount = try std.fmt.parseInt(u32, next[1..], 10);
-        try instructions.append(allocator, .{.goRight = next[0] == 'R', .amount = amount});
-    }
-
-    var part3: [20]u8 = @splat(0);
-
-    var index: i64 = 0;
-    for(instructions.items) |item| {
-        if(item.goRight) {
-            index += item.amount;
-            while(index >= stringList.items.len) {
-                index -= @as(i64, @intCast(stringList.items.len));
-            }
-        } else {
-            index -= item.amount;
-            while(index < 0) {
-                index += @as(i64, @intCast(stringList.items.len));
-            }
-        }
-        const temp = stringList.items[0];
-        stringList.items[0] = stringList.items[@abs(index)];
-        stringList.items[@abs(index)] = temp;
-    }
-
-    std.mem.copyForwards(u8, &part3, stringList.items[0]);
-
-    return part3;
+    const result3 = try day1Part3(allocator, reader);
+    return [3][20]u8{result1, result2, result3};
 }
 
 pub fn day2(_: Allocator, reader: *Reader) ![3][20]u8 {
@@ -360,6 +228,147 @@ pub fn day5(allocator: Allocator, reader: *Reader) ![3]u64 {
     }
 
     return [3]u64{qual1,max - min,part3};
+}
+
+fn day1Part1(allocator: Allocator, reader: *Reader) ![20]u8 {
+    var stringList = std.ArrayList([]u8).empty;
+    var instructions = std.ArrayList(Instruction).empty;
+
+    const line1 = readLine(reader) orelse return error.invalid;
+    var it = std.mem.tokenizeScalar(u8, line1, ',');
+    while(it.next()) |next| {
+        const dupe = try allocator.dupe(u8, next);
+        try stringList.append(allocator, dupe);
+    }
+    _ = try reader.discardDelimiterInclusive('\n');
+    const line2 = readLine(reader) orelse return error.invalid;
+    it = std.mem.tokenizeScalar(u8, line2, ',');
+    while(it.next()) |next| {
+        const amount = try std.fmt.parseInt(u32, next[1..], 10);
+        try instructions.append(allocator, .{.goRight = next[0] == 'R', .amount = amount});
+    }
+
+    var part1: [20]u8 = @splat(0);
+
+    var index: i64 = 0;
+    for(instructions.items) |item| {
+        if(item.goRight) {
+            index += item.amount;
+            if(index >= stringList.items.len) {
+                index = @as(i64, @intCast(stringList.items.len - 1));
+            }
+        } else {
+            if(item.amount >= index) {
+                index = 0;
+            } else {
+                index -= item.amount;
+            }
+        }
+    }
+
+    std.mem.copyForwards(u8, &part1, stringList.items[@abs(index)]);
+
+    index = 0;
+    for(instructions.items) |item| {
+        if(item.goRight) {
+            index += item.amount;
+            while(index >= stringList.items.len) {
+                index -= @as(i64, @intCast(stringList.items.len));
+            }
+        } else {
+            index -= item.amount;
+            while(index < 0) {
+                index += @as(i64, @intCast(stringList.items.len));
+            }
+        }
+    }
+
+    std.mem.copyForwards(u8, &part1, stringList.items[@abs(index)]);
+
+    return part1;
+}
+
+fn day1Part2(allocator: Allocator, reader: *Reader) ![20]u8 {
+    var stringList = std.ArrayList([]u8).empty;
+    var instructions = std.ArrayList(Instruction).empty;
+
+    const line1 = readLine(reader) orelse return error.invalid;
+    var it = std.mem.tokenizeScalar(u8, line1, ',');
+    while(it.next()) |next| {
+        const dupe = try allocator.dupe(u8, next);
+        try stringList.append(allocator, dupe);
+    }
+    _ = try reader.discardDelimiterInclusive('\n');
+    const line2 = readLine(reader) orelse return error.invalid;
+    it = std.mem.tokenizeScalar(u8, line2, ',');
+    while(it.next()) |next| {
+        const amount = try std.fmt.parseInt(u32, next[1..], 10);
+        try instructions.append(allocator, .{.goRight = next[0] == 'R', .amount = amount});
+    }
+
+    var part2: [20]u8 = @splat(0);
+
+    var index: i64 = 0;
+    for(instructions.items) |item| {
+        if(item.goRight) {
+            index += item.amount;
+            while(index >= stringList.items.len) {
+                index -= @as(i64, @intCast(stringList.items.len));
+            }
+        } else {
+            index -= item.amount;
+            while(index < 0) {
+                index += @as(i64, @intCast(stringList.items.len));
+            }
+        }
+    }
+
+    std.mem.copyForwards(u8, &part2, stringList.items[@abs(index)]);
+
+    return part2;
+}
+
+fn day1Part3(allocator: Allocator, reader: *Reader) ![20]u8 {
+    var stringList = std.ArrayList([]u8).empty;
+    var instructions = std.ArrayList(Instruction).empty;
+
+    const line1 = readLine(reader) orelse return error.invalid;
+    var it = std.mem.tokenizeScalar(u8, line1, ',');
+    while(it.next()) |next| {
+        const dupe = try allocator.dupe(u8, next);
+        try stringList.append(allocator, dupe);
+    }
+    _ = try reader.discardDelimiterInclusive('\n');
+    const line2 = readLine(reader) orelse return error.invalid;
+    it = std.mem.tokenizeScalar(u8, line2, ',');
+    while(it.next()) |next| {
+        const amount = try std.fmt.parseInt(u32, next[1..], 10);
+        try instructions.append(allocator, .{.goRight = next[0] == 'R', .amount = amount});
+    }
+
+    var part3: [20]u8 = @splat(0);
+
+    var index: i64 = 0;
+    for(instructions.items) |item| {
+        if(item.goRight) {
+            index += item.amount;
+            while(index >= stringList.items.len) {
+                index -= @as(i64, @intCast(stringList.items.len));
+            }
+        } else {
+            index -= item.amount;
+            while(index < 0) {
+                index += @as(i64, @intCast(stringList.items.len));
+            }
+        }
+        const temp = stringList.items[0];
+        stringList.items[0] = stringList.items[@abs(index)];
+        stringList.items[@abs(index)] = temp;
+    }
+
+    std.mem.copyForwards(u8, &part3, stringList.items[0]);
+
+    return part3;
 }
 
 fn swordLessThan(context: void, s1: *Sword, s2: *Sword) bool {
