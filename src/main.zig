@@ -14,7 +14,6 @@ pub fn main(init: std.process.Init) !void {
     const startTime = std.Io.Timestamp.now(io, .real);
 
     const result1 = try solveDay([3][20]u8, "src/inputs/day1.txt", io, allocator, part1.day1);
-
     println(io, "Day 1: {{ {s}, {s}, {s} }}", .{ result1[0], result1[1], result1[2] });
 
     const result2 = try solveDay([3][20]u8, "src/inputs/day2.txt", io, allocator, part1.day2);
@@ -92,10 +91,6 @@ fn solveDay(comptime Result: type, comptime path: []const u8, io: std.Io, arena:
 
     var reader = file.reader(io, utils.GLOBAL_FILE_BUFFER);
     return try solverFn(allocator, &reader.interface);
-}
-
-fn SolverReturnType(comptime solverFn: anytype) type {
-    return @typeInfo(@TypeOf(solverFn)).@"fn".return_type.?;
 }
 
 fn println(io: std.Io, comptime string: []const u8, args: anytype) void {
