@@ -477,12 +477,12 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
             continue;
         }
         deque.pushBackAssumeCapacity(startingChild);
-        try scaleSet.put(startingChild, void{});
+        try scaleSet.put(startingChild, {});
         while (deque.popFront()) |node| {
             const connections = allConnections.get(node);
             for (connections) |connection| {
                 if (!scaleSet.contains(connection)) {
-                    try scaleSet.put(connection, void{});
+                    try scaleSet.put(connection, {});
                     deque.pushBackAssumeCapacity(connection);
                 }
             }
@@ -491,7 +491,7 @@ pub fn day9(allocator: Allocator, reader: *Reader) ![3]u32 {
         var sum: u32 = 0;
         var it = scaleSet.keyIterator();
         while (it.next()) |key| {
-            try fullScaleSet.put(key.*, void{});
+            try fullScaleSet.put(key.*, {});
             sum += key.*;
         }
         if (scaleSet.count() > maxCount) {
@@ -511,7 +511,7 @@ pub fn day10(allocator: Allocator, reader: *Reader) ![3]u64 {
     var result1: u32 = 0;
     var set1 = std.AutoHashMap(Coord, void).init(allocator);
     var set2 = std.AutoHashMap(Coord, void).init(allocator);
-    try set1.put(start, void{});
+    try set1.put(start, {});
     for (0..2) |_| {
         try populateReachable(&set2, &set1, @abs(dimX), @abs(dimY));
         var it = set2.keyIterator();
@@ -536,7 +536,7 @@ pub fn day10(allocator: Allocator, reader: *Reader) ![3]u64 {
     start, dimX, dimY = try readMap(reader, &sheep, &hideouts);
     set1.clearRetainingCapacity();
     set2.clearRetainingCapacity();
-    try set1.put(start, void{});
+    try set1.put(start, {});
     var result2: u32 = 0;
     var count: u8 = 0;
     while (count < 10) {
@@ -720,7 +720,7 @@ fn updateSheep(allocator: Allocator, sheep: *std.AutoHashMap(Coord, void), dim: 
     sheep.clearRetainingCapacity();
     for (list.items) |item| {
         if (item.y < dim - 1) {
-            try sheep.put(.{ .x = item.x, .y = item.y + 1 }, void{});
+            try sheep.put(.{ .x = item.x, .y = item.y + 1 }, {});
         }
     }
 }
@@ -736,10 +736,10 @@ fn readMap(reader: *Reader, sheep: *std.AutoHashMap(Coord, void), hideouts: *std
         x1 = 0;
         for (line) |char| {
             if (char == 'S') {
-                try sheep.put(.{ .x = x1, .y = y1 }, void{});
+                try sheep.put(.{ .x = x1, .y = y1 }, {});
             }
             if (char == '#') {
-                try hideouts.put(.{ .x = x1, .y = y1 }, void{});
+                try hideouts.put(.{ .x = x1, .y = y1 }, {});
             }
             if (char == 'D') {
                 start = .{ .x = x1, .y = y1 };
@@ -756,28 +756,28 @@ fn populateReachable(result: *std.AutoHashMap(Coord, void), input: *std.AutoHash
     while (it.next()) |coord| {
         const c = coord.*;
         if (inbounds(c.x - 2, c.y - 1, dimX, dimY)) {
-            try result.put(.{ .x = c.x - 2, .y = c.y - 1 }, void{});
+            try result.put(.{ .x = c.x - 2, .y = c.y - 1 }, {});
         }
         if (inbounds(c.x - 2, c.y + 1, dimX, dimY)) {
-            try result.put(.{ .x = c.x - 2, .y = c.y + 1 }, void{});
+            try result.put(.{ .x = c.x - 2, .y = c.y + 1 }, {});
         }
         if (inbounds(c.x - 1, c.y - 2, dimX, dimY)) {
-            try result.put(.{ .x = c.x - 1, .y = c.y - 2 }, void{});
+            try result.put(.{ .x = c.x - 1, .y = c.y - 2 }, {});
         }
         if (inbounds(c.x - 1, c.y + 2, dimX, dimY)) {
-            try result.put(.{ .x = c.x - 1, .y = c.y + 2 }, void{});
+            try result.put(.{ .x = c.x - 1, .y = c.y + 2 }, {});
         }
         if (inbounds(c.x + 1, c.y - 2, dimX, dimY)) {
-            try result.put(.{ .x = c.x + 1, .y = c.y - 2 }, void{});
+            try result.put(.{ .x = c.x + 1, .y = c.y - 2 }, {});
         }
         if (inbounds(c.x + 1, c.y + 2, dimX, dimY)) {
-            try result.put(.{ .x = c.x + 1, .y = c.y + 2 }, void{});
+            try result.put(.{ .x = c.x + 1, .y = c.y + 2 }, {});
         }
         if (inbounds(c.x + 2, c.y - 1, dimX, dimY)) {
-            try result.put(.{ .x = c.x + 2, .y = c.y - 1 }, void{});
+            try result.put(.{ .x = c.x + 2, .y = c.y - 1 }, {});
         }
         if (inbounds(c.x + 2, c.y + 1, dimX, dimY)) {
-            try result.put(.{ .x = c.x + 2, .y = c.y + 1 }, void{});
+            try result.put(.{ .x = c.x + 2, .y = c.y + 1 }, {});
         }
     }
 }

@@ -95,7 +95,7 @@ pub fn day3(allocator: Allocator, reader: *Reader) ![3]u32 {
     var it = std.mem.tokenizeScalar(u8, line1, ',');
     while(it.next()) |next| {
         const num = try std.fmt.parseInt(u32, next, 10);
-        try set.put(num, void{});
+        try set.put(num, {});
     }
 
     var part1: u32 = 0;
@@ -111,7 +111,7 @@ pub fn day3(allocator: Allocator, reader: *Reader) ![3]u32 {
         const num = try std.fmt.parseInt(u32, next, 10);
         try list.append(allocator, num);
     }
-    std.mem.sort(u32, list.items, void{}, std.sort.asc(u32));
+    std.mem.sort(u32, list.items, {}, std.sort.asc(u32));
     var prev: u32 = 99999999;
     var count: u32 = 0;
     var part2: u32 = 0;
@@ -133,13 +133,13 @@ pub fn day3(allocator: Allocator, reader: *Reader) ![3]u32 {
         const num = try std.fmt.parseInt(u32, next, 10);
         try list.append(allocator, num);
     }
-    const max = std.sort.max(u32, list.items, void{}, std.sort.asc(u32)).?;
+    const max = std.sort.max(u32, list.items, {}, std.sort.asc(u32)).?;
     var array = try allocator.alloc(u16, max + 1);
     @memset(array, 0);
     for(list.items) |item| {
         array[item] += 1;
     }
-    const part3 = std.sort.max(u16, array, void{}, std.sort.asc(u16)).?;
+    const part3 = std.sort.max(u16, array, {}, std.sort.asc(u16)).?;
 
     return [3]u32{part1,part2,part3};
 }
@@ -219,7 +219,7 @@ pub fn day5(allocator: Allocator, reader: *Reader) ![3]u64 {
         const sword3 = try getSword(line, allocator);
         try swords.append(allocator, sword3);
     }
-    std.mem.sort(*Sword, swords.items, void{}, swordLessThan);
+    std.mem.sort(*Sword, swords.items, {}, swordLessThan);
     std.mem.reverse(*Sword, swords.items);
 
     var part3: u64 = 0;
@@ -262,23 +262,6 @@ fn day1Part1(allocator: Allocator, reader: *Reader) ![20]u8 {
                 index = 0;
             } else {
                 index -= item.amount;
-            }
-        }
-    }
-
-    std.mem.copyForwards(u8, &part1, stringList.items[@abs(index)]);
-
-    index = 0;
-    for(instructions.items) |item| {
-        if(item.goRight) {
-            index += item.amount;
-            while(index >= stringList.items.len) {
-                index -= @as(i64, @intCast(stringList.items.len));
-            }
-        } else {
-            index -= item.amount;
-            while(index < 0) {
-                index += @as(i64, @intCast(stringList.items.len));
             }
         }
     }

@@ -212,7 +212,7 @@ pub fn day20(allocator: Allocator, reader: *Reader) ![3]u64 {
                     if(neighbor != null and grid1[neighbor.?.x][neighbor.?.y] == Tile.TRAMPOLINE) {
                         const coord = UCoord{.x = x, .y = y};
                         const pair = Pair(UCoord){.a = minCoord(coord, neighbor.?), .b = maxCoord(coord, neighbor.?)};
-                        try pairs.put(pair, void{});
+                        try pairs.put(pair, {});
                     }
                 }
             }
